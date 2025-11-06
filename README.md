@@ -6,7 +6,7 @@ This repository contains computational research on mass-spring lattice systems w
 
 ## Affiliation
 
-- **Researcher**: Daniel Miles (Virginia Tech Student)
+- **Researcher**: Daniel Miles (Undergraduate Student)
 - **Advisor**: Dr. Rakesh Batra, Mechanical Engineering, Virginia Tech
 - **Institution**: Virginia Tech
 
