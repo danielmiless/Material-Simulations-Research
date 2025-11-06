@@ -650,7 +650,8 @@ function run_2d_simulation_with_configurable_force()
     println("  Total work input: $(total_work)")
     println("  Final total energy: $(final_energy)")
     println("  Energy dissipated: $(total_work - final_energy)")
-    println("  Energy dissipation: $((total_work - final_energy) / total_work * 100)%")
+    dissipation_percent = total_work > 0 ? ((total_work - final_energy) / total_work * 100) : 0.0
+    println("  Energy dissipation: $(dissipation_percent)%")
     
     return fig, sol, total_work, final_energy
 end
@@ -742,7 +743,8 @@ end
 #  RUN SIMULATION
 ########################################################################
 # Run the interactive simulation
-fig, sol, work_total, final_energy = run_2d_simulation_with_configurable_force()
+# Use semicolon to suppress verbose output in REPL
+fig, sol, work_total, final_energy = run_2d_simulation_with_configurable_force();
 
 # Uncomment the following line to save animation to file
 # save_animation_to_file("animations/lattice_anim.mp4")
