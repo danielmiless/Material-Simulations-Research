@@ -1,0 +1,24 @@
+# Ignore any build artifacts that might accidentally end up here
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.log
+*.out
+*.synctex.gz
+*.toc
+*.lof
+*.lot
+*.idx
+*.ilg
+*.ind
+*.nav
+*.snm
+*.vrb
+
+# Temporary files
+*.tmp
+*.swp
+*~
+
