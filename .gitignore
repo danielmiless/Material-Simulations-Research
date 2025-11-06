@@ -1,0 +1,44 @@
+# Julia
+*.jl.cov
+*.jl.*.cov
+*.jl.mem
+/Manifest.toml
+.DS_Store
+
+# LaTeX
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.log
+*.out
+*.synctex.gz
+*.toc
+*.pdf
+!papers/**/*.pdf
+
+# Editor directories and files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Data files (uncomment if you want to ignore data)
+# data/*.csv
+# data/*.h5
+# data/*.jld2
+
+# Temporary files
+*.tmp
+*.temp
+
+# Animation outputs (keep source, ignore generated)
+# animations/*.mp4
+# animations/*.gif
+
