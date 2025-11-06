@@ -4,10 +4,12 @@ Exponential Spring Mass-Spring Lattice Simulation
 This script implements a 2D mass-spring lattice system with exponential spring models.
 The system includes:
 - Exponential spring force law: F = k * (r/|r|) * (exp(alpha*|r|) - 1)
-- Damping on nearest-neighbor springs
+- Nearest-neighbor and diagonal spring connections
 - Configurable external force application
 - Real-time visualization and animation
 - Energy conservation tracking
+
+Note: This is a conservative system (no damping).
 
 Research conducted in collaboration with Dr. Rakesh Batra, Virginia Tech.
 
@@ -133,103 +135,54 @@ end
 ########################################################################
 function lattice_2d_rhs_with_diagonals!(du, u, p, t)
     # Extract positions and velocities from state vector
-    pos = reshape(view(u, 1:TOTAL_DOF), 2, TOTAL_MASSES)           # 2×25 matrix
-    vel = reshape(view(u, TOTAL_DOF+1:2*TOTAL_DOF), 2, TOTAL_MASSES) # 2×25 matrix
+    pos = reshape(view(u, 1:TOTAL_DOF), 2, TOTAL_MASSES)
+    vel = reshape(view(u, TOTAL_DOF+1:2*TOTAL_DOF), 2, TOTAL_MASSES)
     
     dpos = reshape(view(du, 1:TOTAL_DOF), 2, TOTAL_MASSES)
     dvel = reshape(view(du, TOTAL_DOF+1:2*TOTAL_DOF), 2, TOTAL_MASSES)
 
-
     # --- kinematics: dx/dt = v ---
     dpos .= vel
-
 
     # --- initialize forces to zero ---
     dvel .= 0.0
 
-
     # --- calculate spring forces between neighboring masses ---
+    # Optimized: process each mass once, checking all neighbors
     for k in 1:TOTAL_MASSES
         i, j = lattice_i(k), lattice_j(k)
-        pos_k = pos[:, k]  # position of mass k as [x, y]
+        pos_k = pos[:, k]
+        
+        # Helper function to add spring force from neighbor
+        function add_spring_force!(neighbor_i, neighbor_j, k_spring, alpha_spring)
+            if 1 <= neighbor_i <= N && 1 <= neighbor_j <= N
+                neighbor_idx = lattice_idx(neighbor_i, neighbor_j)
+                pos_neighbor = pos[:, neighbor_idx]
+                force = spring_force_2d(pos_k, pos_neighbor, k_spring, alpha_spring)
+                dvel[:, k] += force
+            end
+        end
         
         # NEAREST NEIGHBOR SPRINGS (horizontal and vertical)
-        # Horizontal springs (left-right neighbors)
-        if j > 1  # left neighbor exists
-            neighbor_idx = lattice_idx(i, j-1)
-            pos_neighbor = pos[:, neighbor_idx]
-            force = spring_force_2d(pos_k, pos_neighbor, K_COUPLING, ALPHA_COUPLING)
-            dvel[:, k] += force
-        end
-        
-        if j < N  # right neighbor exists
-            neighbor_idx = lattice_idx(i, j+1)
-            pos_neighbor = pos[:, neighbor_idx]
-            force = spring_force_2d(pos_k, pos_neighbor, K_COUPLING, ALPHA_COUPLING)
-            dvel[:, k] += force
-        end
-        
-        # Vertical springs (up-down neighbors)
-        if i > 1  # up neighbor exists
-            neighbor_idx = lattice_idx(i-1, j)
-            pos_neighbor = pos[:, neighbor_idx]
-            force = spring_force_2d(pos_k, pos_neighbor, K_COUPLING, ALPHA_COUPLING)
-            dvel[:, k] += force
-        end
-        
-        if i < N  # down neighbor exists
-            neighbor_idx = lattice_idx(i+1, j)
-            pos_neighbor = pos[:, neighbor_idx]
-            force = spring_force_2d(pos_k, pos_neighbor, K_COUPLING, ALPHA_COUPLING)
-            dvel[:, k] += force
-        end
+        add_spring_force!(i, j-1, K_COUPLING, ALPHA_COUPLING)  # left
+        add_spring_force!(i, j+1, K_COUPLING, ALPHA_COUPLING)  # right
+        add_spring_force!(i-1, j, K_COUPLING, ALPHA_COUPLING)  # up
+        add_spring_force!(i+1, j, K_COUPLING, ALPHA_COUPLING)  # down
         
         # DIAGONAL SPRINGS (next-nearest neighbors in X pattern)
-        # Upper-left diagonal
-        if i > 1 && j > 1  # upper-left diagonal neighbor exists
-            neighbor_idx = lattice_idx(i-1, j-1)
-            pos_neighbor = pos[:, neighbor_idx]
-            force = spring_force_2d(pos_k, pos_neighbor, K_DIAGONAL, ALPHA_DIAGONAL)
-            dvel[:, k] += force
-        end
-        
-        # Upper-right diagonal
-        if i > 1 && j < N  # upper-right diagonal neighbor exists
-            neighbor_idx = lattice_idx(i-1, j+1)
-            pos_neighbor = pos[:, neighbor_idx]
-            force = spring_force_2d(pos_k, pos_neighbor, K_DIAGONAL, ALPHA_DIAGONAL)
-            dvel[:, k] += force
-        end
-        
-        # Lower-left diagonal
-        if i < N && j > 1  # lower-left diagonal neighbor exists
-            neighbor_idx = lattice_idx(i+1, j-1)
-            pos_neighbor = pos[:, neighbor_idx]
-            force = spring_force_2d(pos_k, pos_neighbor, K_DIAGONAL, ALPHA_DIAGONAL)
-            dvel[:, k] += force
-        end
-        
-        # Lower-right diagonal
-        if i < N && j < N  # lower-right diagonal neighbor exists
-            neighbor_idx = lattice_idx(i+1, j+1)
-            pos_neighbor = pos[:, neighbor_idx]
-            force = spring_force_2d(pos_k, pos_neighbor, K_DIAGONAL, ALPHA_DIAGONAL)
-            dvel[:, k] += force
-        end
+        add_spring_force!(i-1, j-1, K_DIAGONAL, ALPHA_DIAGONAL)  # upper-left
+        add_spring_force!(i-1, j+1, K_DIAGONAL, ALPHA_DIAGONAL)  # upper-right
+        add_spring_force!(i+1, j-1, K_DIAGONAL, ALPHA_DIAGONAL)  # lower-left
+        add_spring_force!(i+1, j+1, K_DIAGONAL, ALPHA_DIAGONAL)  # lower-right
     end
-
 
     # --- CONFIGURABLE EXTERNAL DRIVING FORCE ---
     if t <= F_ACTIVE_TIME
-        # Calculate force components from angle and magnitude
         fx, fy = calculate_force_components(F_MAG, FORCE_ANGLE_DEGREES)
-        
-        # Apply to specified target mass
         target_idx = lattice_idx(FORCE_TARGET_ROW, FORCE_TARGET_COL)
-        dvel[1, target_idx] += fx  # x component
-        dvel[2, target_idx] += fy  # y component
+        dvel[1, target_idx] += fx
+        dvel[2, target_idx] += fy
     end
-
 
     # --- divide by mass to obtain accelerations ---
     dvel ./= MASS
@@ -244,7 +197,7 @@ end
 function kinetic_energy_2d(vel_matrix)
     """
     Calculate total kinetic energy for 2D motion.
-    vel_matrix is 2×25 matrix where each column is [vx, vy] for one mass.
+    vel_matrix is 2×N matrix where each column is [vx, vy] for one mass.
     """
     return 0.5 * MASS * sum(vel_matrix.^2)
 end
@@ -253,47 +206,38 @@ end
 function potential_energy_2d_with_diagonals(pos_matrix)
     """
     Calculate total potential energy for 2D exponential spring system with diagonal springs.
-    pos_matrix is 2×25 matrix where each column is [x, y] for one mass.
+    pos_matrix is 2×N matrix where each column is [x, y] for one mass.
     
     For exponential spring: U = (k/alpha) * (exp(alpha*|r|) - alpha*|r| - 1)
     """
     pe = 0.0
     
-    # Horizontal springs (nearest neighbors)
-    for i in 1:N, j in 1:N-1
-        k1 = lattice_idx(i, j)
-        k2 = lattice_idx(i, j+1)
+    # Helper function to calculate and add potential energy from spring
+    function add_spring_pe(k1, k2, k_spring, alpha_spring)
         displacement = pos_matrix[:, k2] - pos_matrix[:, k1]
         distance = norm(displacement)
-        pe += (K_COUPLING / ALPHA_COUPLING) * (exp(ALPHA_COUPLING * distance) - ALPHA_COUPLING * distance - 1.0)
+        return (k_spring / alpha_spring) * (exp(alpha_spring * distance) - alpha_spring * distance - 1.0)
+    end
+    
+    # Horizontal springs (nearest neighbors)
+    for i in 1:N, j in 1:N-1
+        pe += add_spring_pe(lattice_idx(i, j), lattice_idx(i, j+1), K_COUPLING, ALPHA_COUPLING)
     end
     
     # Vertical springs (nearest neighbors)
     for i in 1:N-1, j in 1:N
-        k1 = lattice_idx(i, j)
-        k2 = lattice_idx(i+1, j)
-        displacement = pos_matrix[:, k2] - pos_matrix[:, k1]
-        distance = norm(displacement)
-        pe += (K_COUPLING / ALPHA_COUPLING) * (exp(ALPHA_COUPLING * distance) - ALPHA_COUPLING * distance - 1.0)
+        pe += add_spring_pe(lattice_idx(i, j), lattice_idx(i+1, j), K_COUPLING, ALPHA_COUPLING)
     end
     
     # Diagonal springs (next-nearest neighbors)
     # Upper-left to lower-right diagonals
     for i in 1:N-1, j in 1:N-1
-        k1 = lattice_idx(i, j)
-        k2 = lattice_idx(i+1, j+1)
-        displacement = pos_matrix[:, k2] - pos_matrix[:, k1]
-        distance = norm(displacement)
-        pe += (K_DIAGONAL / ALPHA_DIAGONAL) * (exp(ALPHA_DIAGONAL * distance) - ALPHA_DIAGONAL * distance - 1.0)
+        pe += add_spring_pe(lattice_idx(i, j), lattice_idx(i+1, j+1), K_DIAGONAL, ALPHA_DIAGONAL)
     end
     
     # Upper-right to lower-left diagonals
     for i in 1:N-1, j in 2:N
-        k1 = lattice_idx(i, j)
-        k2 = lattice_idx(i+1, j-1)
-        displacement = pos_matrix[:, k2] - pos_matrix[:, k1]
-        distance = norm(displacement)
-        pe += (K_DIAGONAL / ALPHA_DIAGONAL) * (exp(ALPHA_DIAGONAL * distance) - ALPHA_DIAGONAL * distance - 1.0)
+        pe += add_spring_pe(lattice_idx(i, j), lattice_idx(i+1, j-1), K_DIAGONAL, ALPHA_DIAGONAL)
     end
     
     return pe
@@ -305,26 +249,22 @@ function work_done_2d_configurable(sol)
     Calculate total work done by configurable external force.
     Work = F · dr for the driven target mass.
     """
-    w = 0.0
     target_idx = lattice_idx(FORCE_TARGET_ROW, FORCE_TARGET_COL)
     fx, fy = calculate_force_components(F_MAG, FORCE_ANGLE_DEGREES)
     
+    w = 0.0
     for n in 2:length(sol.t)
-        t₁, t₂ = sol.t[n-1], sol.t[n]
-        if t₁ ≥ F_ACTIVE_TIME
+        if sol.t[n-1] >= F_ACTIVE_TIME
             break
         end
         
-        # Get positions at current and previous time
-        pos_prev = reshape(view(sol.u[n-1], 1:TOTAL_DOF), 2, TOTAL_MASSES)
-        pos_curr = reshape(view(sol.u[n], 1:TOTAL_DOF), 2, TOTAL_MASSES)
+        # Get positions at current and previous time (using views for efficiency)
+        pos_prev = view(sol.u[n-1], (target_idx-1)*2+1:target_idx*2)
+        pos_curr = view(sol.u[n], (target_idx-1)*2+1:target_idx*2)
         
-        # Calculate displacement of target mass
-        displacement = pos_curr[:, target_idx] - pos_prev[:, target_idx]
-        
-        # Work = force dot displacement
-        force_vector = [fx, fy]
-        w += dot(force_vector, displacement)
+        # Calculate displacement and work
+        displacement = pos_curr .- pos_prev
+        w += fx * displacement[1] + fy * displacement[2]
     end
     
     return w
@@ -336,7 +276,7 @@ end
 ########################################################################
 function create_equilibrium_grid()
     """
-    Create equilibrium positions for the 5×5 lattice.
+    Create equilibrium positions for the N×N lattice.
     """
     equilibrium_positions = zeros(2, TOTAL_MASSES)
     
@@ -363,31 +303,23 @@ function create_spring_connections_with_diagonals()
     
     # Horizontal springs (nearest neighbors)
     for i in 1:N, j in 1:N-1
-        k1 = lattice_idx(i, j)
-        k2 = lattice_idx(i, j+1)
-        push!(nearest_neighbor_connections, (k1, k2))
+        push!(nearest_neighbor_connections, (lattice_idx(i, j), lattice_idx(i, j+1)))
     end
     
     # Vertical springs (nearest neighbors)
     for i in 1:N-1, j in 1:N
-        k1 = lattice_idx(i, j)
-        k2 = lattice_idx(i+1, j)
-        push!(nearest_neighbor_connections, (k1, k2))
+        push!(nearest_neighbor_connections, (lattice_idx(i, j), lattice_idx(i+1, j)))
     end
     
     # Diagonal springs (next-nearest neighbors)
     # Upper-left to lower-right diagonals
     for i in 1:N-1, j in 1:N-1
-        k1 = lattice_idx(i, j)
-        k2 = lattice_idx(i+1, j+1)
-        push!(diagonal_connections, (k1, k2))
+        push!(diagonal_connections, (lattice_idx(i, j), lattice_idx(i+1, j+1)))
     end
     
     # Upper-right to lower-left diagonals
     for i in 1:N-1, j in 2:N
-        k1 = lattice_idx(i, j)
-        k2 = lattice_idx(i+1, j-1)
-        push!(diagonal_connections, (k1, k2))
+        push!(diagonal_connections, (lattice_idx(i, j), lattice_idx(i+1, j-1)))
     end
     
     return nearest_neighbor_connections, diagonal_connections
@@ -401,10 +333,7 @@ function create_force_arrow_points(equilibrium_grid, target_idx, force_magnitude
     """
     Create points for visualizing the external force as an arrow.
     """
-    # Get equilibrium position of target mass
     target_pos = equilibrium_grid[:, target_idx]
-    
-    # Calculate force components
     fx, fy = calculate_force_components(force_magnitude, angle_degrees)
     
     # Scale for visualization (make arrow visible but not too long)
@@ -421,6 +350,7 @@ end
 function run_2d_simulation_with_configurable_force()
     """
     Main simulation function with configurable force angle and application point.
+    Returns: (figure, solution, total_work, final_energy)
     """
     println("5×5 Lattice Mass-Spring System with Configurable Force")
     println("=" ^ 65)
@@ -438,7 +368,7 @@ function run_2d_simulation_with_configurable_force()
     println("  Nearest neighbors: horizontal & vertical connections")
     println("  Diagonal springs: X-pattern connections in each square")
     println("  Total connectivity: 8 neighbors per interior mass")
-    println("  Spring type: Exponential")
+    println("  Spring type: Exponential (conservative, no damping)")
     println("")
     println("Configurable External Force:")
     println("  Magnitude: $(F_MAG) N")
@@ -446,16 +376,13 @@ function run_2d_simulation_with_configurable_force()
     println("  Applied to: Mass at position ($(FORCE_TARGET_ROW), $(FORCE_TARGET_COL))")
     println("  Duration: $(F_ACTIVE_TIME) s")
     
-    # Calculate and display force components
     fx, fy = calculate_force_components(F_MAG, FORCE_ANGLE_DEGREES)
     println("  Force components: Fx = $(round(fx, digits=3)) N, Fy = $(round(fy, digits=3)) N")
     println("")
 
-
     # Initial state: all masses at rest at equilibrium positions
     u0 = zeros(2 * TOTAL_DOF)
     tspan = (0.0, T_END)
-
 
     # Create and solve ODE problem
     prob = ODEProblem(lattice_2d_rhs_with_diagonals!, u0, tspan)
@@ -465,17 +392,14 @@ function run_2d_simulation_with_configurable_force()
                 saveat = OUTPUT_INTERVAL,
                 dense = false)
 
-
     if sol.retcode != :Success
         error("Solver failed: $(sol.retcode)")
     end
-
 
     println("Solver completed successfully!")
     println("Final time: $(sol.t[end]) s")
     println("Time steps: $(length(sol.t))")
     println("")
-
 
     # Calculate total work done by external force
     total_work = work_done_2d_configurable(sol)
@@ -511,7 +435,7 @@ function run_2d_simulation_with_configurable_force()
     # Initialize observables for animation
     current_frame = Observable(1)
     
-    # Extract position data for all time steps
+    # Extract position data for all time steps (pre-compute for efficiency)
     all_positions = [reshape(view(sol.u[i], 1:TOTAL_DOF), 2, TOTAL_MASSES) for i in 1:length(sol.t)]
     
     # Create observables for current positions
@@ -571,7 +495,7 @@ function run_2d_simulation_with_configurable_force()
     grid_max = maximum(equilibrium_grid) + 0.5
     limits!(ax, grid_min, grid_max, grid_min, grid_max)
     
-    # Energy conservation plot
+    # Energy conservation plot (pre-compute for efficiency)
     time_values = sol.t
     energy_values = [let
         pos = reshape(view(sol.u[i], 1:TOTAL_DOF), 2, TOTAL_MASSES)
@@ -587,7 +511,6 @@ function run_2d_simulation_with_configurable_force()
     
     # Current time indicator
     current_time = @lift(sol.t[$current_frame])
-    
     vlines!(energy_ax, current_time, color = :green, linewidth = 2)
     
     # Statistics text
@@ -790,6 +713,6 @@ end
 # Run the interactive simulation
 fig, sol, work_total, final_energy = run_2d_simulation_with_configurable_force()
 
-
 # Uncomment the following line to save animation to file
-save_animation_to_file("animations/lattice_anim.mp4")
+# save_animation_to_file("animations/lattice_anim.mp4")
+
