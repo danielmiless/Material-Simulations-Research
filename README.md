@@ -2,12 +2,12 @@
 
 **Work in Progress**
 
-This repository contains computational research on mass-spring lattice systems with exponential spring models, conducted in collaboration with [Dr. Batra](https://www.me.vt.edu/people/faculty/rakesh-batra.html), Professor of Mechanical Engineering at Virginia Tech.
+This repository contains computational research on mass-spring lattice systems with exponential spring models, conducted in collaboration with Dr. Romesh Batra, Distinguished Professor and Clifton C. Garvin Professor, Department of Mechanical Engineering, Virginia Tech.
 
 ## Affiliation
 
 - **Researcher**: Daniel Miles (Undergraduate Student)
-- **Advisor**: Dr. Rakesh Batra, Mechanical Engineering, Virginia Tech
+- **Advisor**: Dr. Romesh Batra, Department of Mechanical Engineering, Virginia Tech
 - **Institution**: Virginia Tech
 
 ## Overview
@@ -16,7 +16,9 @@ This project investigates the dynamics of 2D mass-spring lattice systems using e
 
 - Exponential spring force models with configurable decay rates
 - 2D lattice systems with nearest-neighbor and diagonal spring connections
-- Energy conservation and work calculations
+- Viscous damping on nearest-neighbor springs (energy dissipation)
+- Immovable boundary conditions (backplate constraints)
+- Energy conservation, dissipation, and work calculations
 - Configurable external force application
 - Real-time visualization and animation
 
@@ -50,32 +52,41 @@ Pkg.instantiate()
 
 The main simulation scripts are located in `src/`:
 
-- **`exponential-springs.jl`**: Exponential spring model with damping
-- **`lattice_w_anim.jl`**: Linear spring model with animation
+- **`lattice_simulation.jl`**: Main simulation with exponential springs, viscous damping, and configurable forces
+- **`lattice_simulation_with_backplate.jl`**: Same as above, with an immovable backplate constraint
 
 To run a simulation:
 
 ```bash
-julia --project=. src/exponential-springs.jl
+julia --project=. src/lattice_simulation.jl
 ```
 
 or
 
 ```bash
-julia --project=. src/lattice_w_anim.jl
+julia --project=. src/lattice_simulation_with_backplate.jl
 ```
+
+**Note**: Older deprecated scripts are available in `Deprecated Scripts/` for reference.
 
 ## Repository Structure
 
 ```
 Material-Simulations-Research/
-├── src/              # Main simulation code
-├── docs/             # Comprehensive documentation
-├── papers/           # LaTeX papers and research updates
-├── scripts/          # Utility and example scripts
-├── tests/            # Test suite
-├── animations/        # Generated animations
-└── data/             # Data files
+├── src/                    # Main simulation code
+│   ├── lattice_simulation.jl
+│   └── lattice_simulation_with_backplate.jl
+├── docs/                    # Comprehensive documentation
+├── papers/                  # LaTeX papers and research updates
+│   ├── updates/            # Progress updates
+│   ├── figures/            # Figures for papers
+│   └── build/              # LaTeX build artifacts (gitignored)
+├── scripts/                 # Utility scripts
+│   └── generate_comparison_data.jl  # Script for generating comparison figures
+├── Deprecated Scripts/      # Older versions for reference
+├── tests/                   # Test suite
+├── animations/              # Generated animations
+└── data/                    # Data files
 ```
 
 ## Documentation
@@ -95,8 +106,9 @@ For detailed documentation, see the [docs/](docs/) directory:
 ## Research Objectives
 
 - Investigate dynamics of exponential spring-mass systems
-- Analyze energy conservation in lattice systems
-- Study wave propagation and response to external forces
+- Analyze energy dissipation through viscous damping
+- Study wave propagation and reflection at boundaries
+- Analyze response to external forces and boundary conditions
 - Develop computational tools for material simulation
 
 ## Papers
@@ -111,9 +123,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 For questions or collaboration inquiries, please contact:
 - Daniel Miles: danielmiles@vt.edu
-- Dr. Rakesh Batra: [Department of Mechanical Engineering, Virginia Tech](https://www.me.vt.edu/)
+- Dr. Romesh Batra: Department of Mechanical Engineering, Virginia Tech
 
 ## Acknowledgments
 
-This research is conducted under the guidance of Dr. Rakesh Batra at Virginia Tech's Department of Mechanical Engineering.
+This research is conducted under the guidance of Dr. Romesh Batra, Distinguished Professor and Clifton C. Garvin Professor, Department of Mechanical Engineering, Virginia Tech.
 

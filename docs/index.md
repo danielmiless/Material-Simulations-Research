@@ -4,7 +4,7 @@ Welcome to the documentation for the Material Simulations Research project. This
 
 ## Overview
 
-This research project investigates the dynamics of 2D mass-spring lattice systems using exponential spring models. The work is conducted in collaboration with Dr. Rakesh Batra at Virginia Tech's Department of Mechanical Engineering.
+This research project investigates the dynamics of 2D mass-spring lattice systems using exponential spring models. The work is conducted in collaboration with Dr. Romesh Batra, Distinguished Professor and Clifton C. Garvin Professor, Department of Mechanical Engineering, Virginia Tech.
 
 ## Documentation Structure
 
@@ -32,7 +32,7 @@ This research project investigates the dynamics of 2D mass-spring lattice system
 ## Research Team
 
 - **Researcher**: Daniel Miles (Virginia Tech Student)
-- **Advisor**: Dr. Rakesh Batra, Mechanical Engineering, Virginia Tech
+- **Advisor**: Dr. Romesh Batra, Department of Mechanical Engineering, Virginia Tech
 
 ## Contact
 
