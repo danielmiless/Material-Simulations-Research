@@ -4,12 +4,11 @@ Exponential Spring Mass-Spring Lattice Simulation
 This script implements a 2D mass-spring lattice system with exponential spring models.
 The system includes:
 - Exponential spring force law: F = k * (r/|r|) * (exp(alpha*|r|) - 1)
+- Viscous damping on nearest-neighbor springs (energy dissipation)
 - Nearest-neighbor and diagonal spring connections
 - Configurable external force application
 - Real-time visualization and animation
-- Energy conservation tracking
-
-Note: This is a conservative system (no damping).
+- Energy tracking (with dissipation)
 
 Research conducted in collaboration with Dr. Rakesh Batra, Virginia Tech.
 
@@ -32,6 +31,7 @@ const K_COUPLING  = 100.0        # N for nearest neighbor (horizontal/vertical) 
 const K_DIAGONAL  = 50.0         # N for diagonal springs (typically weaker)
 const ALPHA_COUPLING = 10.0      # exponential decay rate for nearest neighbor springs (m⁻¹)
 const ALPHA_DIAGONAL = 10.0      # exponential decay rate for diagonal springs (m⁻¹)
+const C_DAMPING   = 5.0          # N·s/m damping coefficient for nearest-neighbor springs
 const F_ACTIVE_TIME = 0.05       # duration of the driving pulse (s)
 const F_MAG       = 250.0         # N, magnitude of external force
 
@@ -39,7 +39,7 @@ const F_MAG       = 250.0         # N, magnitude of external force
 ########################################################################
 #  FORCE CONFIGURATION PARAMETERS - EASILY CHANGEABLE
 ########################################################################
-const FORCE_ANGLE_DEGREES = 0.0    # Angle in degrees (0-360): 0=right, 90=up, 180=left, 270=down
+const FORCE_ANGLE_DEGREES = 1.0    # Angle in degrees (0-360): 0=right, 90=up, 180=left, 270=down
 const FORCE_TARGET_ROW = 3           # Row of target mass (1 to N)
 const FORCE_TARGET_COL = 1           # Column of target mass (1 to N)
 
@@ -131,6 +131,22 @@ end
 
 
 ########################################################################
+#  2D DAMPING FORCE CALCULATION
+########################################################################
+function damping_force_2d(vel1, vel2, c)
+    """
+    Calculate 2D viscous damping force between two masses.
+    Returns damping force on mass 1 due to relative velocity with mass 2.
+    
+    F_damping = -c * (v1 - v2)
+    where c is the damping coefficient and v1, v2 are velocities
+    """
+    relative_velocity = vel1 - vel2
+    return -c * relative_velocity
+end
+
+
+########################################################################
 #  ODE RIGHT-HAND SIDE FOR 2D MOTION WITH DIAGONAL SPRINGS
 ########################################################################
 function lattice_2d_rhs_with_diagonals!(du, u, p, t)
@@ -152,28 +168,38 @@ function lattice_2d_rhs_with_diagonals!(du, u, p, t)
     for k in 1:TOTAL_MASSES
         i, j = lattice_i(k), lattice_j(k)
         pos_k = pos[:, k]
+        vel_k = vel[:, k]
         
         # Helper function to add spring force from neighbor
-        function add_spring_force!(neighbor_i, neighbor_j, k_spring, alpha_spring)
+        function add_spring_force!(neighbor_i, neighbor_j, k_spring, alpha_spring, add_damping=false)
             if 1 <= neighbor_i <= N && 1 <= neighbor_j <= N
                 neighbor_idx = lattice_idx(neighbor_i, neighbor_j)
                 pos_neighbor = pos[:, neighbor_idx]
+                vel_neighbor = vel[:, neighbor_idx]
+                
+                # Spring force
                 force = spring_force_2d(pos_k, pos_neighbor, k_spring, alpha_spring)
                 dvel[:, k] += force
+                
+                # Damping force (only for nearest neighbors)
+                if add_damping
+                    damping = damping_force_2d(vel_k, vel_neighbor, C_DAMPING)
+                    dvel[:, k] += damping
+                end
             end
         end
         
-        # NEAREST NEIGHBOR SPRINGS (horizontal and vertical)
-        add_spring_force!(i, j-1, K_COUPLING, ALPHA_COUPLING)  # left
-        add_spring_force!(i, j+1, K_COUPLING, ALPHA_COUPLING)  # right
-        add_spring_force!(i-1, j, K_COUPLING, ALPHA_COUPLING)  # up
-        add_spring_force!(i+1, j, K_COUPLING, ALPHA_COUPLING)  # down
+        # NEAREST NEIGHBOR SPRINGS (horizontal and vertical) WITH DAMPING
+        add_spring_force!(i, j-1, K_COUPLING, ALPHA_COUPLING, true)  # left
+        add_spring_force!(i, j+1, K_COUPLING, ALPHA_COUPLING, true)  # right
+        add_spring_force!(i-1, j, K_COUPLING, ALPHA_COUPLING, true)  # up
+        add_spring_force!(i+1, j, K_COUPLING, ALPHA_COUPLING, true)  # down
         
-        # DIAGONAL SPRINGS (next-nearest neighbors in X pattern)
-        add_spring_force!(i-1, j-1, K_DIAGONAL, ALPHA_DIAGONAL)  # upper-left
-        add_spring_force!(i-1, j+1, K_DIAGONAL, ALPHA_DIAGONAL)  # upper-right
-        add_spring_force!(i+1, j-1, K_DIAGONAL, ALPHA_DIAGONAL)  # lower-left
-        add_spring_force!(i+1, j+1, K_DIAGONAL, ALPHA_DIAGONAL)  # lower-right
+        # DIAGONAL SPRINGS (next-nearest neighbors in X pattern) WITHOUT DAMPING
+        add_spring_force!(i-1, j-1, K_DIAGONAL, ALPHA_DIAGONAL, false)  # upper-left
+        add_spring_force!(i-1, j+1, K_DIAGONAL, ALPHA_DIAGONAL, false)  # upper-right
+        add_spring_force!(i+1, j-1, K_DIAGONAL, ALPHA_DIAGONAL, false)  # lower-left
+        add_spring_force!(i+1, j+1, K_DIAGONAL, ALPHA_DIAGONAL, false)  # lower-right
     end
 
     # --- CONFIGURABLE EXTERNAL DRIVING FORCE ---
@@ -360,15 +386,16 @@ function run_2d_simulation_with_configurable_force()
     println("  Total DOF: $(TOTAL_DOF)")
     println("  Nearest neighbor spring constant: $(K_COUPLING) N")
     println("  Nearest neighbor alpha: $(ALPHA_COUPLING) m⁻¹")
+    println("  Nearest neighbor damping: $(C_DAMPING) N·s/m")
     println("  Diagonal spring constant: $(K_DIAGONAL) N")
     println("  Diagonal alpha: $(ALPHA_DIAGONAL) m⁻¹")
     println("  Mass: $(MASS) kg")
     println("")
     println("Spring Network:")
-    println("  Nearest neighbors: horizontal & vertical connections")
-    println("  Diagonal springs: X-pattern connections in each square")
+    println("  Nearest neighbors: horizontal & vertical connections (with damping)")
+    println("  Diagonal springs: X-pattern connections in each square (no damping)")
     println("  Total connectivity: 8 neighbors per interior mass")
-    println("  Spring type: Exponential (conservative, no damping)")
+    println("  Spring type: Exponential")
     println("")
     println("Configurable External Force:")
     println("  Magnitude: $(F_MAG) N")
@@ -523,7 +550,8 @@ function run_2d_simulation_with_configurable_force()
         pe = potential_energy_2d_with_diagonals(pos)
         total_e = ke + pe
         
-        error_percent = abs(total_work - total_e) / abs(total_work) * 100
+        energy_dissipated = total_work - total_e
+        dissipation_percent = total_work > 0 ? (energy_dissipated / total_work * 100) : 0.0
         
         target_pos = pos[:, target_idx]
         
@@ -541,6 +569,7 @@ function run_2d_simulation_with_configurable_force()
         - Nearest: $(length(nearest_neighbor_connections))
         - Diagonal: $(length(diagonal_connections))
         - Total: $(length(nearest_neighbor_connections) + length(diagonal_connections))
+        - Damping: $(C_DAMPING) N·s/m (nearest only)
         
         Energy:
         Kinetic: $(round(ke, digits=6))
@@ -548,7 +577,8 @@ function run_2d_simulation_with_configurable_force()
         Total: $(round(total_e, digits=6))
         
         Work Input: $(round(total_work, digits=6))
-        Error: $(round(error_percent, digits=4))%
+        Dissipated: $(round(energy_dissipated, digits=6))
+        Dissipation: $(round(dissipation_percent, digits=2))%
         
         Target Mass:
         X: $(round(target_pos[1], digits=4))
@@ -614,12 +644,14 @@ function run_2d_simulation_with_configurable_force()
     println("  Nearest neighbor springs: $(length(nearest_neighbor_connections))")
     println("  Diagonal springs: $(length(diagonal_connections))")
     println("  Total springs: $(length(nearest_neighbor_connections) + length(diagonal_connections))")
+    println("  Damping coefficient: $(C_DAMPING) N·s/m (nearest neighbors only)")
     println()
-    println("Energy Conservation:")
+    println("Energy Analysis:")
     println("  Total work input: $(total_work)")
     println("  Final total energy: $(final_energy)")
-    println("  Energy error: $(abs(total_work - final_energy))")
-    println("  Final % error: $(final_error)%")
+    println("  Energy dissipated: $(total_work - final_energy)")
+    dissipation_percent = total_work > 0 ? ((total_work - final_energy) / total_work * 100) : 0.0
+    println("  Energy dissipation: $(dissipation_percent)%")
     
     return fig, sol, total_work, final_energy
 end
@@ -633,6 +665,12 @@ function save_animation_to_file(filename = "lattice_anim.mp4")
     Save the animation to a video file with force configuration display.
     """
     println("Creating animation file: $filename")
+    
+    # Ensure directory exists
+    dir = dirname(filename)
+    if !isempty(dir) && !isdir(dir)
+        mkpath(dir)
+    end
     
     # Solve the system
     u0 = zeros(2 * TOTAL_DOF)
@@ -711,8 +749,10 @@ end
 #  RUN SIMULATION
 ########################################################################
 # Run the interactive simulation
-fig, sol, work_total, final_energy = run_2d_simulation_with_configurable_force()
+# Use semicolon to suppress verbose output in REPL
+fig, sol, work_total, final_energy = run_2d_simulation_with_configurable_force();
 
-# Uncomment the following line to save animation to file
-# save_animation_to_file("animations/lattice_anim.mp4")
+# Save animation to file (automatically updates on each run)
+# Use semicolon to suppress verbose output
+save_animation_to_file("animations/lattice_anim.mp4");
 

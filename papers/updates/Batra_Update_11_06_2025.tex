@@ -1,0 +1,465 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{graphicx}
+\usepackage{subcaption}
+\usepackage{hyperref}
+\usepackage[margin=1in]{geometry}
+\usepackage{listings}
+\usepackage{xcolor}
+
+% Configure code listings
+\lstset{
+    language=,
+    basicstyle=\ttfamily\small,
+    keywordstyle=\color{blue},
+    commentstyle=\color{green!60!black},
+    stringstyle=\color{red},
+    numberstyle=\tiny\color{gray},
+    numbers=left,
+    breaklines=true,
+    frame=single,
+    backgroundcolor=\color{gray!10}
+}
+
+% Julia language definition
+\lstdefinelanguage{Julia}%
+{morekeywords={abstract,break,case,catch,const,continue,do,else,elseif,%
+    end,export,false,for,function,immutable,in,macro,module,otherwise,%
+    quote,return,switch,true,try,type,typealias,using,while},%
+sensitive,%
+alsoother={$},%
+morecomment=[l]\#,%
+morecomment=[n]{\#=}{=\#},%
+morestring=[s]{"}{"},%
+morestring=[m]{'}{'},%
+}[keywords,comments,strings]%
+
+\title{Research Update: Viscous Damping and Immovable Backplate Implementation}
+\author{Daniel Miles}
+\date{November 6, 2025}
+
+\begin{document}
+
+\maketitle
+
+\section{Introduction}
+
+This update documents two significant enhancements to the mass-spring lattice simulation system that introduce realistic physical behavior and boundary conditions:
+
+\begin{enumerate}
+    \item \textbf{Viscous Damping}: Implementation of energy-dissipating dampers on nearest-neighbor springs, enabling the system to reach equilibrium after external forcing
+    \item \textbf{Immovable Backplate}: Addition of a rigid wall constraint to the right side of the lattice, providing a fixed boundary condition for studying wave reflection and compression behavior
+\end{enumerate}
+
+\noindent These modifications are essential for modeling realistic physical systems where energy dissipation occurs through material damping and where boundaries constrain the system's motion. The damping mechanism allows the system to settle into equilibrium states, while the backplate enables investigation of wave propagation in bounded domains, which is relevant to many engineering applications including impact absorption, seismic wave propagation, and material testing.
+
+\subsection{Context and Motivation}
+
+The original simulation framework implemented a conservative system with exponential spring forces and no energy dissipation. While this provides insight into the fundamental dynamics, real materials exhibit energy loss through various mechanisms. Additionally, many practical applications involve interactions with rigid boundaries, making the study of boundary effects crucial for understanding system behavior.
+
+\section{Viscous Damping Implementation}
+
+\subsection{Physical Motivation}
+
+In real physical systems, energy is not perfectly conserved. Friction, air resistance, and internal material damping all contribute to energy dissipation. To model this behavior, we introduce viscous damping forces that are proportional to the relative velocity between connected masses.
+
+\subsection{Mathematical Formulation}
+
+For two masses connected by a spring, the viscous damping force on mass 1 due to its relative motion with mass 2 is:
+
+\begin{equation}
+\vec{F}_{damping} = -c(\vec{v}_1 - \vec{v}_2)
+\end{equation}
+
+where:
+\begin{itemize}
+    \item $c$ is the damping coefficient (N·s/m)
+    \item $\vec{v}_1$ is the velocity vector of mass 1
+    \item $\vec{v}_2$ is the velocity vector of mass 2
+\end{itemize}
+
+For a 2D system, the components are:
+\begin{align}
+F_{damping,x} &= -c(v_{1,x} - v_{2,x}) \\
+F_{damping,y} &= -c(v_{1,y} - v_{2,y})
+\end{align}
+
+\subsection{Energy Dissipation}
+
+The power dissipated by the damping force is:
+\begin{equation}
+P = \vec{F}_{damping} \cdot \vec{v}_1 = -c|\vec{v}_1 - \vec{v}_2|^2
+\end{equation}
+
+\noindent Since $P \leq 0$ (power is always negative, indicating energy loss), the damping force always removes energy from the system. The total energy dissipated over time is:
+
+\begin{equation}
+E_{dissipated} = \int_0^t P(\tau) \, d\tau = c \int_0^t |\vec{v}_1(\tau) - \vec{v}_2(\tau)|^2 \, d\tau
+\end{equation}
+
+\subsection{Implementation Details}
+
+In our simulation, viscous damping is applied only to nearest-neighbor springs (horizontal and vertical connections), not to diagonal springs. This choice reflects the physical intuition that primary damping occurs through direct contact between adjacent masses. \newline
+
+\noindent The damping coefficient used is:
+\begin{equation}
+c = 5.0 \text{ N·s/m}
+\end{equation}
+
+\noindent This value provides noticeable energy dissipation while maintaining numerical stability. The damping force is calculated for each nearest-neighbor spring connection and added to the total force on each mass.
+
+\subsection{Energy Conservation Analysis}
+
+With damping present, the total energy of the system is no longer conserved. Instead, we have:
+
+\begin{equation}
+\frac{dE_{total}}{dt} = \frac{dE_{kinetic}}{dt} + \frac{dE_{potential}}{dt} = -P_{dissipated}
+\end{equation}
+
+\noindent where $P_{dissipated}$ is the total power dissipated by all damping forces. The work done by external forces equals the sum of the final total energy and the energy dissipated:
+
+\begin{equation}
+W_{external} = E_{total}(t) + E_{dissipated}(t)
+\end{equation}
+
+\subsection{Simulation Results: Damping Effects}
+
+The implementation of viscous damping significantly alters the system's energy dynamics. Figure~\ref{fig:energy_comparison} compares energy evolution for systems with and without the backplate, both incorporating damping. Key observations include:
+
+\begin{itemize}
+    \item \textbf{Energy dissipation}: Both systems show monotonic energy decrease due to damping, with dissipation rates proportional to relative velocities between connected masses
+    \item \textbf{Dissipation rate}: Highest during initial transients when relative velocities are largest, decreasing as the system approaches equilibrium
+    \item \textbf{Equilibrium behavior}: The damped systems eventually reach near-equilibrium states where energy dissipation becomes minimal
+    \item \textbf{Backplate effects}: The presence of the backplate affects energy distribution and dissipation patterns due to wave reflection
+\end{itemize}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.85\textwidth]{../figures/energy_comparison_damping.png}
+\caption{Energy evolution comparison: system without backplate (blue) vs. with backplate (red). Both systems incorporate viscous damping on nearest-neighbor springs. Dashed lines indicate total work input. The damped systems show clear energy dissipation over time, with the backplate scenario exhibiting different energy dynamics due to wave reflection effects.}
+\label{fig:energy_comparison}
+\end{figure}
+
+\section{Immovable Backplate Implementation}
+
+\subsection{Physical Motivation}
+
+Many physical systems involve interactions with rigid boundaries. In our lattice simulation, we introduce an immovable backplate to the right side of the lattice. This serves as a fixed boundary condition that prevents the lattice from expanding indefinitely and allows us to study wave reflection and compression behavior.
+
+\subsection{Mathematical Formulation}
+
+The backplate is positioned at a fixed distance $d_{backplate}$ to the right of the rightmost column. For a mass in the rightmost column (column $N$), the equilibrium x-position is:
+
+\begin{equation}
+x_{eq} = (N-1) \cdot s_{grid}
+\end{equation}
+
+\noindent where $s_{grid}$ is the grid spacing. The backplate x-position is:
+
+\begin{equation}
+x_{backplate} = x_{eq} + d_{backplate} = (N-1) \cdot s_{grid} + d_{backplate}
+\end{equation}
+
+\subsection{Wall Constraint Force}
+
+To prevent masses from passing through the backplate, we implement a penalty-based wall constraint. When a mass attempts to move past the backplate ($x > x_{backplate}$), a repulsive force is applied:
+
+\begin{equation}
+F_{wall} = \begin{cases}
+-k_{wall}(x - x_{backplate}) & \text{if } x > x_{backplate} \\
+0 & \text{if } x \leq x_{backplate}
+\end{cases}
+\end{equation}
+
+\noindent where $k_{wall}$ is the wall stiffness coefficient. In our implementation:
+\begin{equation}
+k_{wall} = 10000 \text{ N/m}
+\end{equation}
+
+\noindent This very high stiffness ensures minimal penetration while maintaining numerical stability.
+
+\subsection{Wall Damping}
+
+To prevent oscillations at the wall interface, we also apply damping when masses collide with the wall:
+
+\begin{equation}
+F_{wall,damping} = \begin{cases}
+-c_{wall} v_x & \text{if } x > x_{backplate} \text{ and } v_x > 0 \\
+0 & \text{otherwise}
+\end{cases}
+\end{equation}
+
+\noindent where $c_{wall} = 10.0$ N·s/m is the wall damping coefficient and $v_x$ is the x-component of velocity.
+
+\subsection{Potential Energy Contribution}
+
+The wall constraint contributes to the potential energy through a penalty term:
+
+\begin{equation}
+U_{wall} = \begin{cases}
+\frac{1}{2}k_{wall}(x - x_{backplate})^2 & \text{if } x > x_{backplate} \\
+0 & \text{if } x \leq x_{backplate}
+\end{cases}
+\end{equation}
+
+\noindent This penalty potential ensures that the total energy accounting includes the energy stored in wall deformation (though ideally this should be zero for a rigid wall).
+
+\subsection{Initial Setup}
+
+Figure~\ref{fig:backplate_initial} shows the initial configuration of the lattice with the backplate. The backplate appears as a gray vertical line to the right of the lattice, positioned at a distance of 1.0 m from the rightmost column.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.75\textwidth]{../figures/backplate_initial_setup.png}
+\caption{Initial configuration of the 5×5 lattice with immovable backplate. The backplate (gray vertical line, 8 pixels wide) is positioned 1.0 m to the right of the rightmost column. Blue lines represent nearest-neighbor springs (with damping), red lines represent diagonal springs (no damping), and the orange node indicates the target mass where external force is applied.}
+\label{fig:backplate_initial}
+\end{figure}
+
+\section{Comparison: With and Without Backplate}
+
+\subsection{Simulation Parameters}
+
+To compare the effects of the backplate, we run two simulations with identical parameters except for the presence of the backplate:
+
+\begin{itemize}
+    \item Lattice size: 5×5 (25 masses)
+    \item Mass per node: 1.0 kg
+    \item Nearest-neighbor spring constant: $K_{coupling} = 100.0$ N
+    \item Diagonal spring constant: $K_{diagonal} = 50.0$ N
+    \item Exponential parameter: $\alpha = 10.0$ m$^{-1}$ (for all springs)
+    \item Damping coefficient: $c = 5.0$ N·s/m (nearest neighbors only)
+    \item External force magnitude: $F = 500.0$ N
+    \item Force angle: $1.0°$ (nearly horizontal, toward the right)
+    \item Force target: Mass at position (3, 1) - bottom-left region
+    \item Force duration: 0.05 s
+    \item Simulation time: 5.0 s
+\end{itemize}
+
+\subsection{Key Differences}
+
+The primary difference between the two scenarios is:
+\begin{itemize}
+    \item \textbf{Without backplate}: The lattice can expand freely to the right
+    \item \textbf{With backplate}: The rightmost column is constrained and cannot pass through the wall
+\end{itemize}
+
+\subsection{Expected Behavior}
+
+With the external force applied to the bottom-left region and directed toward the right, we expect:
+
+\begin{enumerate}
+    \item \textbf{Without backplate}: 
+    \begin{itemize}
+        \item The lattice expands to the right
+        \item Wave propagation occurs across the lattice
+        \item Energy spreads throughout the system
+        \item The rightmost column moves freely
+    \end{itemize}
+    
+    \item \textbf{With backplate}:
+    \begin{itemize}
+        \item Initial expansion toward the right
+        \item Reflection when the wave reaches the backplate
+        \item Compression of the lattice as waves reflect
+        \item The rightmost column experiences wall forces
+        \item Higher energy density near the backplate due to wave reflection
+    \end{itemize}
+\end{enumerate}
+
+\subsection{Simulation Results}
+
+\subsubsection{Energy Analysis}
+
+Table~\ref{tab:energy_comparison} presents comprehensive energy statistics for both scenarios. These results demonstrate the effects of boundary conditions on energy dissipation and distribution:
+
+\begin{table}[h]
+\centering
+\begin{tabular}{|l|c|c|}
+\hline
+\textbf{Metric} & \textbf{Without Backplate} & \textbf{With Backplate} \\
+\hline
+Total Work Input (J) & 75.500778 & 75.500778 \\
+Final Total Energy (J) & 12.500962 & 5.742276 \\
+Energy Dissipated (J) & 62.999816 & 69.758502 \\
+Dissipation Percentage (\%) & 83.44 & 92.39 \\
+\hline
+\end{tabular}
+\caption{Energy comparison between scenarios with and without backplate. Both simulations use identical parameters (force magnitude: 500.0 N, damping coefficient: 5.0 N·s/m) except for the backplate constraint. The work input represents energy added by the external force, while dissipation accounts for energy lost through viscous damping. The backplate scenario shows higher energy dissipation (92.39\% vs. 83.44\%), indicating that wave reflection creates additional relative motion and thus more damping.}
+\label{tab:energy_comparison}
+\end{table}
+
+\noindent Key observations from the energy analysis:
+
+\begin{itemize}
+    \item \textbf{Work input}: Identical for both scenarios (75.500778 J), confirming that the external force application is the same
+    \item \textbf{Energy dissipation}: The backplate scenario exhibits significantly higher dissipation (92.39\% vs. 83.44\%), demonstrating that wave reflection creates additional relative motion between masses, leading to increased damping
+    \item \textbf{Final energy}: The backplate scenario has lower final energy (5.74 J vs. 12.50 J), indicating more complete energy dissipation due to wave reflection and boundary interactions
+    \item \textbf{Dissipation mechanism}: The 8.95\% difference in dissipation percentage highlights the role of boundary conditions in energy dissipation through wave reflection effects
+\end{itemize}
+
+\subsubsection{Wave Reflection}
+
+With the backplate present, waves traveling to the right reflect off the wall and propagate back through the lattice. This creates:
+\begin{itemize}
+    \item Standing wave patterns near the backplate
+    \item Increased compression in the rightmost columns
+    \item More complex energy distribution patterns
+\end{itemize}
+
+\begin{figure}[h]
+\centering
+\begin{subfigure}{0.48\textwidth}
+\centering
+\includegraphics[width=\textwidth]{../figures/no_backplate_snapshot.png}
+\caption{Without backplate: lattice expands freely to the right}
+\end{subfigure}
+\begin{subfigure}{0.48\textwidth}
+\centering
+\includegraphics[width=\textwidth]{../figures/with_backplate_snapshot.png}
+\caption{With backplate: lattice compresses against wall, showing wave reflection}
+\end{subfigure}
+\caption{Comparison of lattice configurations at a representative time point (mid-simulation). The backplate scenario shows compression of the rightmost columns and altered wave propagation patterns due to reflection at the boundary.}
+\label{fig:lattice_comparison}
+\end{figure}
+
+\section{Implementation Code Structure}
+
+\subsection{Damping Implementation}
+
+The damping force is calculated in the ODE right-hand side function:
+
+\begin{lstlisting}[language=Julia, caption={Damping force calculation}]
+function damping_force_2d(vel1, vel2, c)
+    # Calculate 2D viscous damping force between two masses.
+    # Returns damping force on mass 1 due to relative velocity with mass 2.
+    # F_damping = -c * (v1 - v2)
+    relative_velocity = vel1 - vel2
+    return -c * relative_velocity
+end
+\end{lstlisting}
+
+\noindent Damping is applied only to nearest-neighbor springs:
+
+\begin{lstlisting}[language=Julia, caption=Applying damping to nearest neighbors]
+# NEAREST NEIGHBOR SPRINGS (horizontal and vertical) WITH DAMPING
+add_spring_force!(i, j-1, K_COUPLING, ALPHA_COUPLING, true)  # left
+add_spring_force!(i, j+1, K_COUPLING, ALPHA_COUPLING, true)  # right
+add_spring_force!(i-1, j, K_COUPLING, ALPHA_COUPLING, true)  # up
+add_spring_force!(i+1, j, K_COUPLING, ALPHA_COUPLING, true)  # down
+
+# DIAGONAL SPRINGS WITHOUT DAMPING
+add_spring_force!(i-1, j-1, K_DIAGONAL, ALPHA_DIAGONAL, false)  # upper-left
+add_spring_force!(i-1, j+1, K_DIAGONAL, ALPHA_DIAGONAL, false)  # upper-right
+add_spring_force!(i+1, j-1, K_DIAGONAL, ALPHA_DIAGONAL, false)  # lower-left
+add_spring_force!(i+1, j+1, K_DIAGONAL, ALPHA_DIAGONAL, false)  # lower-right
+\end{lstlisting}
+
+\subsection{Backplate Implementation}
+
+The wall constraint is implemented as follows:
+
+\begin{lstlisting}[language=Julia, caption=Wall constraint for rightmost column]
+# WALL CONSTRAINT (rightmost column cannot pass through backplate)
+if j == N  # Rightmost column
+    equilibrium_x = (N - 1) * GRID_SPACING
+    backplate_x = equilibrium_x + BACKPLATE_DISTANCE
+    current_x = equilibrium_x + pos_k[1]  # absolute x position
+    
+    # If mass tries to move past the backplate, apply repulsive force
+    if current_x > backplate_x
+        penetration = current_x - backplate_x
+        # Very stiff repulsive force (like a wall)
+        wall_force_x = -WALL_STIFFNESS * penetration
+        dvel[1, k] += wall_force_x
+        
+        # Damping when colliding with wall
+        if vel_k[1] > 0  # Moving toward wall
+            dvel[1, k] -= WALL_DAMPING * vel_k[1]
+        end
+    end
+end
+\end{lstlisting}
+
+\section{Numerical Considerations}
+
+\subsection{Stability and Accuracy}
+
+The implementation maintains numerical stability through careful selection of parameters:
+
+\begin{itemize}
+    \item \textbf{Wall stiffness}: The high stiffness coefficient ($k_{wall} = 10000$ N/m) ensures minimal penetration while remaining within the solver's stability limits
+    \item \textbf{Wall damping}: The damping coefficient ($c_{wall} = 10.0$ N·s/m) prevents oscillations at the wall interface without over-damping the system
+    \item \textbf{Solver tolerance}: Tight tolerances (relative: $10^{-12}$, absolute: $10^{-14}$) ensure accurate energy tracking despite the stiff wall forces
+\end{itemize}
+
+\subsection{Computational Performance}
+
+Both implementations maintain similar computational performance:
+\begin{itemize}
+    \item Damping adds minimal computational overhead (simple velocity difference calculations)
+    \item Wall constraint checks are performed only for the rightmost column (5 masses), keeping overhead minimal
+    \item Total simulation time remains comparable to the original implementation
+\end{itemize}
+
+\section{Physical Interpretation and Applications}
+
+\subsection{Energy Dissipation Mechanisms}
+
+The viscous damping model represents several physical energy dissipation mechanisms:
+
+\begin{enumerate}
+    \item \textbf{Material damping}: Internal friction within the spring material
+    \item \textbf{Air resistance}: Drag forces on moving masses
+    \item \textbf{Structural damping}: Energy loss through structural connections
+\end{enumerate}
+
+\noindent The linear velocity-dependent model ($F = -c\Delta v$) is appropriate for low-velocity regimes and provides a good first-order approximation of these effects.
+
+\subsection{Wave Reflection at Boundaries}
+
+The backplate implementation enables study of wave reflection phenomena:
+
+\begin{itemize}
+    \item \textbf{Reflection coefficient}: The rigid wall creates near-perfect reflection of incident waves
+    \item \textbf{Standing waves}: Reflected waves interfere with incident waves, creating standing wave patterns
+    \item \textbf{Energy localization}: Wave reflection concentrates energy near the boundary
+\end{itemize}
+
+\noindent These effects are relevant to applications such as:
+\begin{itemize}
+    \item Seismic wave propagation in bounded geological structures
+    \item Impact absorption in protective materials
+    \item Wave propagation in periodic structures with boundaries
+    \item Material testing under constrained conditions
+\end{itemize}
+
+\section{Conclusions and Future Work}
+
+\subsection{Key Achievements}
+
+This update successfully implements two critical enhancements:
+
+\begin{enumerate}
+    \item \textbf{Viscous Damping}: Introduced realistic energy dissipation through velocity-dependent damping forces on nearest-neighbor springs, enabling the system to reach equilibrium states
+    \item \textbf{Immovable Backplate}: Implemented a rigid wall constraint using a penalty-based approach with high stiffness and appropriate damping, enabling study of boundary effects and wave reflection
+    \item \textbf{Comprehensive Analysis}: Demonstrated the effects of boundary conditions on wave propagation, energy distribution, and dissipation patterns
+    \item \textbf{Numerical Stability}: Maintained stability and accuracy despite the introduction of stiff wall forces through careful parameter selection
+\end{enumerate}
+
+\subsection{Physical Insights}
+
+The simulations reveal several important physical behaviors:
+
+\begin{itemize}
+    \item \textbf{Energy dissipation}: Damping provides a natural mechanism for systems to reach equilibrium after external forcing, with dissipation rates proportional to relative velocities
+    \item \textbf{Wave reflection}: The backplate creates significant wave reflection effects that alter energy distribution and create standing wave patterns
+    \item \textbf{Boundary effects}: Wall constraints create localized regions of high energy density and compression, which are important for understanding material behavior under constrained conditions
+    \item \textbf{Dissipation patterns}: The presence of boundaries can affect overall energy dissipation rates by creating additional relative motion through wave reflection
+\end{itemize}
+
+\section{Acknowledgments}
+
+Research conducted in collaboration with Dr. Romesh Batra, Department of Mechanical Engineering, Virginia Tech.
+
+\end{document}

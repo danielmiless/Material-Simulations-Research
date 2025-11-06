@@ -18,6 +18,9 @@
 *.pdf
 !papers/**/*.pdf
 
+# LaTeX build directory
+papers/build/
+
 # Editor directories and files
 .vscode/
 .idea/

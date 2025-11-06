@@ -1,0 +1,399 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage[margin=1in]{geometry}
+\usepackage{listings}
+\usepackage{xcolor}
+
+% Configure code listings
+\lstset{
+    language=,
+    basicstyle=\ttfamily\small,
+    keywordstyle=\color{blue},
+    commentstyle=\color{green!60!black},
+    stringstyle=\color{red},
+    numberstyle=\tiny\color{gray},
+    numbers=left,
+    breaklines=true,
+    frame=single,
+    backgroundcolor=\color{gray!10}
+}
+
+% Julia language definition
+\lstdefinelanguage{Julia}%
+{morekeywords={abstract,break,case,catch,const,continue,do,else,elseif,%
+    end,export,false,for,function,immutable,in,macro,module,otherwise,%
+    quote,return,switch,true,try,type,typealias,using,while},%
+sensitive,%
+alsoother={},%
+morecomment=[l]\#,%
+morecomment=[n]{\#=}{=\#},%
+morestring=[s]{"}{"},%
+morestring=[m]{'}{'},%
+}[keywords,comments,strings]%
+
+\title{Research Update: Converting From Linear to Exponential Springs}
+\author{Daniel Miles}
+\date{October 20, 2025}
+
+\begin{document}
+
+\maketitle
+
+\section{Introduction}
+
+The original Julia simulation employed a 5×5 lattice of masses connected by linear springs, both nearest-neighbor and diagonal connections. \newline
+
+\noindent The conversion to exponential springs introduces nonlinear dynamics while preserving the fundamental conservation laws. This document details the mathematical foundations, derivations, and implementation changes required for this conversion.
+
+\section{Linear Spring Model (Original Implementation)}
+
+\subsection{Force Law}
+
+The linear spring model follows Hooke's law for small displacements:
+
+\begin{equation}
+\vec{F} = -k(\vec{r} - \vec{r}_0) = -k\vec{d}
+\end{equation}
+
+where:
+\begin{itemize}
+\item $\vec{F}$ is the spring force vector
+\item $k$ is the spring constant (N/m)
+\item $\vec{r}$ is the current position vector
+\item $\vec{r}_0$ is the equilibrium position vector
+\item $\vec{d} = \vec{r} - \vec{r}_0$ is the displacement vector
+\end{itemize}
+
+For a 2D system, this becomes:
+\begin{equation}
+\vec{F} = -k\vec{d} = -k(d_x\hat{i} + d_y\hat{j})
+\end{equation}
+
+\subsection{Potential Energy}
+
+The potential energy function for a linear spring is:
+
+\begin{equation}
+U(\vec{r}) = \frac{1}{2}k|\vec{d}|^2 = \frac{1}{2}k(d_x^2 + d_y^2)
+\end{equation}
+
+\subsection{Force-Energy Relationship Verification}
+
+We can verify the force-energy relationship using:
+\begin{equation}
+\vec{F} = -\nabla U = -\frac{\partial U}{\partial \vec{r}}
+\end{equation}
+
+Taking the gradient:
+\begin{align}
+\frac{\partial U}{\partial d_x} &= kd_x \\
+\frac{\partial U}{\partial d_y} &= kd_y
+\end{align}
+
+Therefore:
+\begin{equation}
+\vec{F} = -k(d_x\hat{i} + d_y\hat{j}) = -k\vec{d}
+\end{equation}
+
+This confirms the consistency between force law and potential energy.
+
+\section{Exponential Spring Model (New Implementation)}
+
+\subsection{Force Law}
+
+The exponential spring model uses a force law that grows exponentially with displacement magnitude:
+
+\begin{equation}
+\vec{F} = k(\exp(\alpha|\vec{d}|) - 1)\frac{\vec{d}}{|\vec{d}|}
+\end{equation}
+
+where:
+\begin{itemize}
+\item $k$ is the spring constant (N)
+\item $\alpha$ is the exponential decay parameter (m$^{-1}$)
+\item $|\vec{d}| = \sqrt{d_x^2 + d_y^2}$ is the displacement magnitude
+\item $\frac{\vec{d}}{|\vec{d}|}$ is the unit vector in the displacement direction
+\end{itemize}
+
+\subsection{Potential Energy Derivation}
+
+To find the potential energy function, we integrate the force law. For a radially symmetric potential, we work in terms of the displacement magnitude $r = |\vec{d}|$.
+
+The radial component of force is:
+\begin{equation}
+F_r = k(\exp(\alpha r) - 1)
+\end{equation}
+
+The potential energy is found by integrating:
+\begin{equation}
+U(r) = -\int F_r \, dr = -\int k(\exp(\alpha r) - 1) \, dr
+\end{equation}
+
+Evaluating the integral:
+\begin{equation}
+U(r) = -k\left[\frac{\exp(\alpha r)}{\alpha} - r\right] + C
+\end{equation}
+
+Setting the boundary condition $U(0) = 0$:
+\begin{align}
+0 &= -k\left[\frac{1}{\alpha} - 0\right] + C \\
+C &= \frac{k}{\alpha}
+\end{align}
+
+Therefore, the potential energy function is:
+\begin{equation}
+U(r) = \frac{k}{\alpha}(\exp(\alpha r) - \alpha r - 1)
+\end{equation}
+
+\subsection{Force-Energy Relationship Verification}
+
+We verify that $F_r = -\frac{dU}{dr}$:
+
+\begin{equation}
+\frac{dU}{dr} = \frac{k}{\alpha}(\alpha\exp(\alpha r) - \alpha) = k(\exp(\alpha r) - 1)
+\end{equation}
+
+Therefore:
+\begin{equation}
+F_r = -\frac{dU}{dr} = -k(\exp(\alpha r) - 1)
+\end{equation}
+
+This matches our force law with the appropriate sign convention (force points toward equilibrium for positive displacements).
+
+\subsection{Vector Form Implementation}
+
+For implementation in 2D, we need the vector components:
+
+\begin{equation}
+\vec{F} = F_r \frac{\vec{d}}{|\vec{d}|} = k(\exp(\alpha|\vec{d}|) - 1)\frac{\vec{d}}{|\vec{d}|}
+\end{equation}
+
+\noindent The components are:
+\begin{align}
+F_x &= k(\exp(\alpha|\vec{d}|) - 1)\frac{d_x}{|\vec{d}|} \\
+F_y &= k(\exp(\alpha|\vec{d}|) - 1)\frac{d_y}{|\vec{d}|}
+\end{align}
+
+\section{Model Comparison}
+
+\subsection{Small Displacement Behavior}
+
+For small displacements ($\alpha r \ll 1$), we can expand the exponential:
+\begin{equation}
+\exp(\alpha r) \approx 1 + \alpha r + \frac{(\alpha r)^2}{2} + \ldots
+\end{equation}
+
+The exponential force becomes:
+\begin{equation}
+F_r \approx k\left(\alpha r + \frac{(\alpha r)^2}{2}\right) \approx k\alpha r
+\end{equation}
+
+This shows that for small displacements, the exponential spring behaves linearly with effective spring constant $k_{eff} = k\alpha$.
+
+\subsection{Large Displacement Behavior}
+
+For large displacements ($\alpha r \gg 1$):
+\begin{equation}
+F_r \approx k\exp(\alpha r)
+\end{equation}
+
+The force grows exponentially, providing much stronger resistance to large deformations compared to linear springs.
+
+\subsection{Energy Storage Comparison}
+
+The potential energy storage differs significantly:
+
+\textbf{Linear}: $U_{linear} = \frac{1}{2}k_{linear}r^2$ (quadratic growth)
+
+\textbf{Exponential}: $U_{exp} = \frac{k}{\alpha}(\exp(\alpha r) - \alpha r - 1)$ (exponential growth)
+
+\section{Implementation Changes}
+
+\subsection{Parameter Modifications}
+
+The following parameters were modified in the Julia code:
+
+\begin{lstlisting}[language=Julia,caption=Original linear spring parameters]
+# Original linear spring parameters
+const K_COUPLING  = 100.0        # N m^-1 
+const K_DIAGONAL  = 50.0         # N m^-1 
+\end{lstlisting}
+
+\begin{lstlisting}[language=Julia,caption=New exponential spring parameters]
+# New exponential spring parameters  
+const K_COUPLING  = 100.0        # N
+const K_DIAGONAL  = 50.0         # N
+const ALPHA_COUPLING = 10.0      # m^-1
+const ALPHA_DIAGONAL = 10.0      # m^-1
+\end{lstlisting}
+
+Note that the spring constants now have units of force (N) rather than force per unit length (N/m).
+
+\subsection{Spring Force Function Changes}
+
+\textbf{Original Linear Implementation:}
+\begin{lstlisting}[language=Julia,caption=Original linear spring force function]
+function spring_force_2d(pos1, pos2, k)
+    displacement = pos2 - pos1
+    return k * displacement     # Hooke's law in 2D
+end
+\end{lstlisting}
+
+\textbf{New Exponential Implementation:}
+\begin{lstlisting}[language=Julia,caption=New exponential spring force function]
+function spring_force_2d(pos1, pos2, k, alpha)
+    displacement = pos2 - pos1
+    distance = norm(displacement)
+    
+    if distance < 1e-12
+        return zeros(2)
+    end
+    
+    direction = displacement / distance
+    force_magnitude = k * (exp(alpha * distance) - 1.0)
+    
+    return force_magnitude * direction
+end
+\end{lstlisting}
+
+\subsection{Potential Energy Function Changes}
+
+\textbf{Original Linear Implementation:}
+\begin{lstlisting}[language=Julia,caption=Original linear potential energy calculation]
+function potential_energy_2d_with_diagonals(pos_matrix)
+    pe = 0.0
+    # For each spring connection:
+    displacement = pos_matrix[:, k2] - pos_matrix[:, k1]
+    pe += 0.5 * K_COUPLING * sum(displacement.^2)
+    return pe
+end
+\end{lstlisting}
+
+\textbf{New Exponential Implementation:}
+\begin{lstlisting}[language=Julia,caption=New exponential potential energy calculation]
+function potential_energy_2d_with_diagonals(pos_matrix)
+    pe = 0.0
+    # For each spring connection:
+    displacement = pos_matrix[:, k2] - pos_matrix[:, k1]
+    distance = norm(displacement)
+    pe += (K_COUPLING / ALPHA_COUPLING) * 
+          (exp(ALPHA_COUPLING * distance) - 
+           ALPHA_COUPLING * distance - 1.0)
+    return pe
+end
+\end{lstlisting}
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=0.5\textwidth]{../figures/initial_state.png}
+    \caption{Schematic of the initial state of the 5×5 Mass-Spring Lattice with nearest neighbor and diagonal (X-pattern) connections. The location (3,1) at which external force is applied is indicated.}
+\end{figure}
+
+\section{Energy Conservation}
+
+\subsection{Conservation Principle}
+
+Energy conservation in the modified system follows the same fundamental principle:
+
+\begin{equation}
+E_{total} = T + V = \text{constant} + W_{external}
+\end{equation}
+
+where:
+\begin{itemize}
+\item $T$ is kinetic energy
+\item $V$ is potential energy (now exponential)
+\item $W_{external}$ is work done by external forces
+\end{itemize}
+
+\subsection{Numerical Accuracy}
+
+The exponential spring model maintains the same numerical accuracy for energy conservation because:
+
+\begin{enumerate}
+\item \textbf{Consistent Derivation}: The potential energy function is properly derived from the force law
+\item \textbf{Symplectic Integration}: The Vern9 solver preserves energy to machine precision
+\item \textbf{Proper Gradient}: The force is exactly $-\nabla U$
+\end{enumerate}
+
+\subsection{Verification}
+
+Energy conservation can be verified by monitoring:
+\begin{equation}
+\Delta E = |E(t) - E(0) - W_{external}(t)| < \epsilon
+\end{equation}
+
+where $\epsilon$ is the numerical tolerance (typically $10^{-12}$ to $10^{-14}$).
+
+\section{Numerical Considerations}
+
+\subsection{Stability}
+
+The exponential force law can become very large for significant displacements. Care must be taken to:
+
+\begin{enumerate}
+\item Choose appropriate $\alpha$ values to prevent numerical overflow
+\item Use adaptive time stepping for stability
+\item Monitor displacement magnitudes during simulation
+\end{enumerate}
+
+\section{Simulation Results}
+
+The direct terminal output after running the script with the previously outlined parameters:
+
+\begin{verbatim}
+5×5 Lattice Mass-Spring System with Configurable Force
+=================================================================
+Physical Parameters:
+  Total masses: 25
+  DOF per mass: 2 (x, y)
+  Total DOF: 50
+  Nearest neighbor spring constant: 100.0 N
+  Nearest neighbor alpha: 10.0 m^-1
+  Diagonal spring constant: 50.0 N
+  Diagonal alpha: 10.0 m^-1
+  Mass: 1.0 kg
+
+Spring Network:
+  Nearest neighbors: horizontal & vertical connections
+  Diagonal springs: X-pattern connections in each square
+  Total connectivity: 8 neighbors per interior mass
+  Spring type: Exponential
+
+Configurable External Force:
+  Magnitude: 250.0 N
+  Angle: 0.0° (0°=right, 90°=up, 180°=left, 270°=down)
+  Applied to: Mass at position (3, 1)
+  Duration: 0.05 s
+  Force components: Fx = 250.0 N, Fy = 0.0 N
+
+Solver completed successfully!
+Final time: 5.0 s
+Time steps: 501
+
+Final Summary:
+==================================================
+Force Configuration:
+  Magnitude: 250.0 N
+  Angle: 0.0°
+  Target mass: (3, 1)
+  Components: Fx = 250.0 N, Fy = 0.0 N
+
+Spring Network Statistics:
+  Nearest neighbor springs: 40
+  Diagonal springs: 32
+  Total springs: 72
+
+Energy Conservation:
+  Total work input: 24.24754391201347
+  Final total energy: 24.247543945208772
+  Energy error: 3.3195302506783264e-8
+  Final % error: 1.369017110649983e-7%
+Creating animation file: animations/lattice_anim.mp4
+Animation saved to: animations/lattice_anim.mp4
+\end{verbatim}
+
+\end{document}
