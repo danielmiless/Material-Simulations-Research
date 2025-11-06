@@ -73,14 +73,17 @@ pdflatex -output-directory=../build Batra_Update_10_20_2025.tex  # Run twice for
 
 ### Using VS Code LaTeX Workshop (Build Button)
 
-If you're using VS Code with the LaTeX Workshop extension, the build button (green play button) is configured to automatically send all build files to `papers/build/`. 
+If you're using VS Code with the LaTeX Workshop extension, the build button (green play button) is configured to:
+- Send all build artifacts (`.aux`, `.log`, etc.) to `papers/build/`
+- Automatically copy the generated PDF to `papers/updates/` after successful compilation
 
 The configuration is in `.vscode/settings.json` and includes:
 - Output directory set to `../build` relative to the `.tex` file
 - Auxiliary directory set to match output directory
+- Post-build script that copies PDFs to `updates/` directory
 - Automatic cleanup of build files from source directories
 
-**Note**: The `.latexmkrc` files in `papers/` and `papers/updates/` directories are configured to automatically use the `build/` directory. The VS Code settings work together with these to ensure build files always go to the correct location.
+**Note**: The `.latexmkrc` files in `papers/` and `papers/updates/` directories are configured to automatically use the `build/` directory. The VS Code settings work together with these to ensure build files go to `build/` and PDFs are automatically copied to `updates/`.
 
 ### Compiling with figure paths:
 
@@ -91,7 +94,7 @@ When compiling from subdirectories, ensure figure paths are correct:
 ## Notes
 
 - Keep source `.tex` files in version control
-- Generated `.pdf` files should be committed for easy access
+- Generated `.pdf` files are automatically placed in `updates/` directory and should be committed for easy access
 - Build artifacts (`.aux`, `.log`, `.out`, etc.) are gitignored and stored in `build/`
 - Use consistent citation styles (e.g., IEEE, APA, or journal-specific)
 - For Unicode characters in verbatim environments, use ASCII equivalents (e.g., `m^-1` instead of `m⁻¹`)

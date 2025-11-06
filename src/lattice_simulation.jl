@@ -39,7 +39,7 @@ const F_MAG       = 250.0         # N, magnitude of external force
 ########################################################################
 #  FORCE CONFIGURATION PARAMETERS - EASILY CHANGEABLE
 ########################################################################
-const FORCE_ANGLE_DEGREES = 0.0    # Angle in degrees (0-360): 0=right, 90=up, 180=left, 270=down
+const FORCE_ANGLE_DEGREES = 1.0    # Angle in degrees (0-360): 0=right, 90=up, 180=left, 270=down
 const FORCE_TARGET_ROW = 3           # Row of target mass (1 to N)
 const FORCE_TARGET_COL = 1           # Column of target mass (1 to N)
 
@@ -666,6 +666,12 @@ function save_animation_to_file(filename = "lattice_anim.mp4")
     """
     println("Creating animation file: $filename")
     
+    # Ensure directory exists
+    dir = dirname(filename)
+    if !isempty(dir) && !isdir(dir)
+        mkpath(dir)
+    end
+    
     # Solve the system
     u0 = zeros(2 * TOTAL_DOF)
     tspan = (0.0, T_END)
@@ -746,6 +752,7 @@ end
 # Use semicolon to suppress verbose output in REPL
 fig, sol, work_total, final_energy = run_2d_simulation_with_configurable_force();
 
-# Uncomment the following line to save animation to file
-# save_animation_to_file("animations/lattice_anim.mp4")
+# Save animation to file (automatically updates on each run)
+# Use semicolon to suppress verbose output
+save_animation_to_file("animations/lattice_anim.mp4");
 

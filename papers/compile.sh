@@ -36,12 +36,18 @@ latexmk -pdf \
 
 # Check if compilation was successful
 if [ $? -eq 0 ]; then
+    # Copy PDF to updates directory
+    UPDATES_DIR="$SCRIPT_DIR/updates"
+    mkdir -p "$UPDATES_DIR"
+    cp "$BUILD_DIR/$PAPER_NAME.pdf" "$UPDATES_DIR/"
+    # Remove PDF from build directory after copying
+    rm "$BUILD_DIR/$PAPER_NAME.pdf"
+    
     echo ""
     echo "Compilation successful!"
-    echo "PDF location: $BUILD_DIR/$PAPER_NAME.pdf"
-    echo ""
-    echo "To copy PDF to updates directory:"
-    echo "  cp $BUILD_DIR/$PAPER_NAME.pdf $SCRIPT_DIR/updates/"
+    echo "PDF location: $UPDATES_DIR/$PAPER_NAME.pdf"
+    echo "PDF removed from build directory"
+    echo "Build artifacts: $BUILD_DIR/"
 else
     echo ""
     echo "Compilation failed. Check the log file: $BUILD_DIR/$PAPER_NAME.log"
