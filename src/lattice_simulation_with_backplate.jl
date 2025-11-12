@@ -22,7 +22,6 @@ using DifferentialEquations
 using LinearAlgebra
 using Printf
 using GLMakie
-using Observables
 
 
 ########################################################################
@@ -36,17 +35,18 @@ const ALPHA_DIAGONAL = 10.0      # exponential decay rate for diagonal springs (
 const C_DAMPING   = 5.0          # N·s/m damping coefficient for nearest-neighbor springs
 const WALL_STIFFNESS = 10000.0   # N/m for wall repulsion force (very stiff to prevent penetration)
 const WALL_DAMPING = 10.0        # N·s/m damping coefficient for wall collisions
-const F_ACTIVE_TIME = 0.05       # duration of the driving pulse (s)
-const F_MAG       = 500.0         # N, magnitude of external force
+const F_ACTIVE_TIME = 0.1        # duration of the driving pulse (s) - increased to showcase material effects
+const F_MAG       = 800.0         # N, magnitude of external force - increased to better showcase material gradient
 const BACKPLATE_DISTANCE = 1.0   # Distance from rightmost column to backplate (m)
+const MATERIAL_MULTIPLIER = 2/3   # Material property scaling factor for columns (1.5 for first case, 2/3 for second case)
 
 
 ########################################################################
 #  FORCE CONFIGURATION PARAMETERS - EASILY CHANGEABLE
 ########################################################################
-const FORCE_ANGLE_DEGREES = 1.0    # Angle in degrees (0-360): 0=right, 90=up, 180=left, 270=down
-const FORCE_TARGET_ROW = 3           # Row of target mass (1 to N)
-const FORCE_TARGET_COL = 1           # Column of target mass (1 to N)
+const FORCE_ANGLE_DEGREES = 0.0    # Angle in degrees (0-360): 0=right, 90=up, 180=left, 270=down - horizontal to showcase column gradient
+const FORCE_TARGET_ROW = 3           # Row of target mass (1 to N) - middle row
+const FORCE_TARGET_COL = 1           # Column of target mass (1 to N) - leftmost column to push through gradient
 
 
 ########################################################################
@@ -61,7 +61,7 @@ const TOTAL_DOF = TOTAL_MASSES * DOF_PER_MASS  # 50 position DOF
 ########################################################################
 #  NUMERICAL PARAMETERS
 ########################################################################
-const T_END          = 5.0       # s
+const T_END          = 6.0       # s - increased to see full material gradient effects
 const OUTPUT_INTERVAL= 0.01      # s
 const REL_TOL        = 1e-12
 const ABS_TOL        = 1e-14
@@ -83,6 +83,46 @@ const GRID_SPACING = 1.0         # Spacing between equilibrium positions
 @inline lattice_idx(i,j) = (i-1)*N + j                    # (i,j) → mass index 1…25
 @inline lattice_i(k) = 1 + div(k-1,N)                     # mass index → row
 @inline lattice_j(k) = 1 + mod(k-1,N)                     # mass index → column
+
+
+########################################################################
+#  MATERIAL PROPERTY LOOKUP FUNCTIONS (COLUMN-BASED SCALING)
+########################################################################
+function get_column_k_coupling(j, material_multiplier)
+    """
+    Get spring constant for nearest-neighbor springs in column j.
+    Column 1 uses base value, columns 2-5 use scaled values.
+    """
+    if j == 1
+        return K_COUPLING
+    else
+        return K_COUPLING * (material_multiplier^(j-1))
+    end
+end
+
+function get_column_k_diagonal(j, material_multiplier)
+    """
+    Get spring constant for diagonal springs in column j.
+    Column 1 uses base value, columns 2-5 use scaled values.
+    """
+    if j == 1
+        return K_DIAGONAL
+    else
+        return K_DIAGONAL * (material_multiplier^(j-1))
+    end
+end
+
+function get_column_c_damping(j, material_multiplier)
+    """
+    Get damping coefficient for nearest-neighbor springs in column j.
+    Column 1 uses base value, columns 2-5 use scaled values.
+    """
+    if j == 1
+        return C_DAMPING
+    else
+        return C_DAMPING * (material_multiplier^(j-1))
+    end
+end
 
 
 ########################################################################
@@ -198,7 +238,7 @@ function lattice_2d_rhs_with_diagonals_and_backplate!(du, u, p, t)
         vel_k = vel[:, k]
         
         # Helper function to add spring force from neighbor
-        function add_spring_force!(neighbor_i, neighbor_j, k_spring, alpha_spring, add_damping=false)
+        function add_spring_force!(neighbor_i, neighbor_j, k_spring, alpha_spring, add_damping=false, damping_coeff=C_DAMPING)
             if 1 <= neighbor_i <= N && 1 <= neighbor_j <= N
                 neighbor_idx = lattice_idx(neighbor_i, neighbor_j)
                 pos_neighbor = pos[:, neighbor_idx]
@@ -210,17 +250,22 @@ function lattice_2d_rhs_with_diagonals_and_backplate!(du, u, p, t)
                 
                 # Damping force (only for nearest neighbors)
                 if add_damping
-                    damping = damping_force_2d(vel_k, vel_neighbor, C_DAMPING)
+                    damping = damping_force_2d(vel_k, vel_neighbor, damping_coeff)
                     dvel[:, k] += damping
                 end
             end
         end
         
         # NEAREST NEIGHBOR SPRINGS (horizontal and vertical) WITH DAMPING
-        add_spring_force!(i, j-1, K_COUPLING, ALPHA_COUPLING, true)  # left
-        add_spring_force!(i, j+1, K_COUPLING, ALPHA_COUPLING, true)  # right
-        add_spring_force!(i-1, j, K_COUPLING, ALPHA_COUPLING, true)  # up
-        add_spring_force!(i+1, j, K_COUPLING, ALPHA_COUPLING, true)  # down
+        # Horizontal springs use base values
+        add_spring_force!(i, j-1, K_COUPLING, ALPHA_COUPLING, true, C_DAMPING)  # left
+        add_spring_force!(i, j+1, K_COUPLING, ALPHA_COUPLING, true, C_DAMPING)  # right
+        
+        # Vertical springs use column-based material properties
+        k_col = get_column_k_coupling(j, MATERIAL_MULTIPLIER)
+        c_col = get_column_c_damping(j, MATERIAL_MULTIPLIER)
+        add_spring_force!(i-1, j, k_col, ALPHA_COUPLING, true, c_col)  # up
+        add_spring_force!(i+1, j, k_col, ALPHA_COUPLING, true, c_col)  # down
         
         # DIAGONAL SPRINGS (next-nearest neighbors in X pattern) WITHOUT DAMPING
         add_spring_force!(i-1, j-1, K_DIAGONAL, ALPHA_DIAGONAL, false)  # upper-left
@@ -451,7 +496,7 @@ function run_2d_simulation_with_configurable_force_and_backplate()
     Main simulation function with configurable force angle, application point, and immovable backplate.
     Returns: (figure, solution, total_work, final_energy)
     """
-    println("5×5 Lattice Mass-Spring System with Configurable Force and Immovable Backplate")
+    println("5×5 Lattice Mass-Spring System with Material Scaling, Configurable Force, and Immovable Backplate")
     println("=" ^ 80)
     println("Physical Parameters:")
     println("  Total masses: $(TOTAL_MASSES)")
@@ -473,6 +518,16 @@ function run_2d_simulation_with_configurable_force_and_backplate()
     println("  Wall constraint: rightmost column cannot pass through immovable backplate")
     println("  Total connectivity: 8 neighbors per interior mass + wall constraint for rightmost column")
     println("  Spring type: Exponential")
+    println("")
+    println("Material Scaling (Column-Based):")
+    println("  Material multiplier: $(MATERIAL_MULTIPLIER)×")
+    println("  Column 1: base values (K=$(K_COUPLING) N, c=$(C_DAMPING) N·s/m)")
+    for j in 2:N
+        k_col = get_column_k_coupling(j, MATERIAL_MULTIPLIER)
+        c_col = get_column_c_damping(j, MATERIAL_MULTIPLIER)
+        println("  Column $j: $(round(MATERIAL_MULTIPLIER^(j-1), digits=3))× base (K=$(round(k_col, digits=1)) N, c=$(round(c_col, digits=2)) N·s/m)")
+    end
+    println("  Visualization: Columns color-coded from light (column 1) to dark (column $N) to show gradient")
     println("")
     println("Configurable External Force:")
     println("  Magnitude: $(F_MAG) N")
@@ -519,7 +574,7 @@ function run_2d_simulation_with_configurable_force_and_backplate()
     
     # Main animation axis
     ax = Axis(fig[1, 1:2], 
-              title = "2D Mass-Spring Lattice with Configurable Force and Immovable Backplate",
+              title = "5×5 Mass-Spring Lattice with Material Scaling ($(MATERIAL_MULTIPLIER)×), Force, and Backplate",
               xlabel = "X Position",
               ylabel = "Y Position",
               aspect = DataAspect())
@@ -565,10 +620,23 @@ function run_2d_simulation_with_configurable_force_and_backplate()
     # Plot masses as scatter points
     mass_points = @lift(Point2f[($current_positions)[:, k] for k in 1:TOTAL_MASSES])
     
-    # Color target mass differently to show where force is applied
-    colors = fill(:black, TOTAL_MASSES)
+    # Color-code masses by column to showcase material gradient
+    # Use a color gradient: lighter (column 1) to darker (column N) to show increasing/decreasing stiffness
+    colors = Vector{Symbol}(undef, TOTAL_MASSES)
     target_idx = lattice_idx(FORCE_TARGET_ROW, FORCE_TARGET_COL)
-    colors[target_idx] = :orange
+    
+    # Color scheme based on column index to visualize material gradient
+    column_colors = [:lightblue, :blue, :darkblue, :navy, :black]  # Gradient from light to dark
+    for k in 1:TOTAL_MASSES
+        i, j = lattice_i(k), lattice_j(k)
+        if k == target_idx
+            colors[k] = :orange  # Target mass always orange
+        else
+            # Map column index to color (1-based, so j=1..N)
+            color_idx = min(j, length(column_colors))
+            colors[k] = column_colors[color_idx]
+        end
+    end
     
     scatter!(ax, mass_points, markersize = NODE_SIZE, color = colors, strokewidth = 2, strokecolor = :white)
     
@@ -653,7 +721,8 @@ function run_2d_simulation_with_configurable_force_and_backplate()
         - Diagonal: $(length(diagonal_connections))
         - Total: $(length(nearest_neighbor_connections) + length(diagonal_connections))
         - Wall constraint: prevents rightmost column from passing through backplate
-        - Damping: $(C_DAMPING) N·s/m (nearest neighbors)
+        - Damping: $(C_DAMPING) N·s/m (nearest neighbors, column-based scaling)
+        - Material scaling: $(MATERIAL_MULTIPLIER)× multiplier (columns 2-5 scaled)
         
         Energy:
         Kinetic: $(round(ke, digits=6))
@@ -810,11 +879,20 @@ function save_animation_to_file(filename = "lattice_anim_with_backplate.mp4")
         backplate_line_points = Point2f[backplate_positions[:, i] for i in 1:N]
         lines!(ax, backplate_line_points, color = :gray, linewidth = 8)
         
-        # Plot masses
+        # Plot masses with column-based color coding
         mass_points = Point2f[current_positions[:, k] for k in 1:TOTAL_MASSES]
-        colors = fill(:black, TOTAL_MASSES)
+        colors = Vector{Symbol}(undef, TOTAL_MASSES)
         target_idx = lattice_idx(FORCE_TARGET_ROW, FORCE_TARGET_COL)
-        colors[target_idx] = :orange
+        column_colors = [:lightblue, :blue, :darkblue, :navy, :black]
+        for k in 1:TOTAL_MASSES
+            i, j = lattice_i(k), lattice_j(k)
+            if k == target_idx
+                colors[k] = :orange
+            else
+                color_idx = min(j, length(column_colors))
+                colors[k] = column_colors[color_idx]
+            end
+        end
         scatter!(ax, mass_points, markersize = NODE_SIZE, color = colors, strokewidth = 2, strokecolor = :white)
         
         # Add force arrow if active

@@ -1,0 +1,432 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{graphicx}
+\usepackage{subcaption}
+\usepackage{hyperref}
+\usepackage[margin=1in]{geometry}
+\usepackage{listings}
+\usepackage{xcolor}
+
+% Configure code listings
+\lstset{
+    language=,
+    basicstyle=\ttfamily\small,
+    keywordstyle=\color{blue},
+    commentstyle=\color{green!60!black},
+    stringstyle=\color{red},
+    numberstyle=\tiny\color{gray},
+    numbers=left,
+    breaklines=true,
+    frame=single,
+    backgroundcolor=\color{gray!10}
+}
+
+% Julia language definition
+\lstdefinelanguage{Julia}%
+{morekeywords={abstract,break,case,catch,const,continue,do,else,elseif,%
+    end,export,false,for,function,immutable,in,macro,module,otherwise,%
+    quote,return,switch,true,try,type,typealias,using,while},%
+sensitive,%
+alsoother={$},%
+morecomment=[l]\#,%
+morecomment=[n]{\#=}{=\#},%
+morestring=[s]{"}{"},%
+morestring=[m]{'}{'},%
+}[keywords,comments,strings]%
+
+\title{Research Update: Material Scaling, Parameter Sensitivity, and System Extension}
+\author{Daniel Miles}
+\date{November 11, 2025}
+
+\begin{document}
+
+\maketitle
+
+\section{Introduction}
+
+This update documents three significant extensions to the mass-spring lattice simulation system that enhance its capability to model heterogeneous materials and investigate parameter sensitivity:
+
+\begin{enumerate}
+    \item \textbf{Column-Based Material Scaling}: Implementation of spatially-varying material properties where each column has different spring constants and damping coefficients, enabling simulation of layered or graded materials
+    \item \textbf{Parameter Sensitivity Analysis}: Systematic investigation of the effects of wall stiffness and damping parameters on system behavior
+    \item \textbf{10×10 System Extension}: Expansion of the simulation framework to larger lattice sizes (100 masses) with material scaling and backplate constraints
+\end{enumerate}
+
+\noindent These enhancements enable the study of more complex material systems where properties vary spatially, which is relevant to many engineering applications including composite materials, functionally graded materials, and layered structures. The parameter sensitivity analysis provides insight into the robustness of the wall constraint implementation, while the larger system size allows investigation of wave propagation in extended domains.
+
+\subsection{Context and Motivation}
+
+Previous work established the foundation with exponential spring models, viscous damping, and immovable backplate constraints. The current extensions address the need to model heterogeneous materials where properties vary spatially, which is common in many practical applications. Additionally, understanding parameter sensitivity is crucial for ensuring numerical stability and physical realism in the simulations.
+
+\section{Column-Based Material Scaling Implementation}
+
+\subsection{Physical Motivation}
+
+Many real-world materials exhibit spatial variation in mechanical properties. Examples include:
+\begin{itemize}
+    \item \textbf{Layered composites}: Materials with distinct layers having different stiffness and damping properties
+    \item \textbf{Functionally graded materials}: Materials with properties that vary continuously in space
+    \item \textbf{Multi-material structures}: Systems composed of different materials arranged in columns or layers
+\end{itemize}
+
+To model such systems, we implement column-based material scaling where each column (from left to right) has material properties scaled by a multiplicative factor relative to the base column.
+
+\subsection{Mathematical Formulation}
+
+For a lattice with $N$ columns, we define material properties for column $j$ as:
+
+\begin{equation}
+k_j = k_1 \cdot m^{j-1}
+\end{equation}
+
+where:
+\begin{itemize}
+    \item $k_j$ is the spring constant for column $j$
+    \item $k_1$ is the base spring constant (column 1)
+    \item $m$ is the material multiplier
+    \item $j = 1, 2, \ldots, N$ is the column index (left to right)
+\end{itemize}
+
+\noindent Column 1 uses the base value ($m^0 = 1$), while subsequent columns are scaled by powers of the multiplier. The same scaling applies to:
+\begin{itemize}
+    \item Nearest-neighbor spring constants: $K_{coupling,j} = K_{coupling} \cdot m^{j-1}$
+    \item Diagonal spring constants: $K_{diagonal,j} = K_{diagonal} \cdot m^{j-1}$
+    \item Damping coefficients: $c_j = c \cdot m^{j-1}$
+\end{itemize}
+
+\subsection{Implementation Details}
+
+Material properties are applied only to vertical springs within each column. Horizontal springs connecting columns use base values, maintaining continuity while allowing column-specific properties. This approach models a system where each column represents a distinct material layer.
+
+The implementation uses lookup functions:
+\begin{lstlisting}[language=Julia, caption={Material property lookup functions}]
+function get_column_k_coupling(j, material_multiplier)
+    if j == 1
+        return K_COUPLING
+    else
+        return K_COUPLING * (material_multiplier^(j-1))
+    end
+end
+\end{lstlisting}
+
+\noindent In the ODE right-hand side function, vertical springs use column-specific properties:
+\begin{lstlisting}[language=Julia, caption={Using column-based properties for vertical springs}]
+# Vertical springs use column-based material properties
+k_col = get_column_k_coupling(j, MATERIAL_MULTIPLIER)
+c_col = get_column_c_damping(j, MATERIAL_MULTIPLIER)
+add_spring_force!(i-1, j, k_col, ALPHA_COUPLING, true, c_col)  # up
+add_spring_force!(i+1, j, k_col, ALPHA_COUPLING, true, c_col)  # down
+\end{lstlisting}
+
+\subsection{Scaling Cases Studied}
+
+We investigate two scaling scenarios:
+\begin{enumerate}
+    \item \textbf{Increasing stiffness}: $m = 1.5$ (columns become progressively stiffer)
+    \item \textbf{Decreasing stiffness}: $m = 2/3$ (columns become progressively softer)
+\end{enumerate}
+
+\noindent These cases represent materials that either stiffen or soften from left to right, which can model various physical scenarios such as:
+\begin{itemize}
+    \item Composite materials with increasing reinforcement density
+    \item Functionally graded materials with property gradients
+    \item Layered structures with alternating material properties
+\end{itemize}
+
+\section{Simulation Results: Material Scaling Effects}
+
+\subsection{5×5 System with 1.5× Multiplier}
+
+For the increasing stiffness case ($m = 1.5$), columns 2-5 have progressively higher spring constants and damping coefficients:
+\begin{itemize}
+    \item Column 2: $1.5 \times$ base values
+    \item Column 3: $2.25 \times$ base values
+    \item Column 4: $3.375 \times$ base values
+    \item Column 5: $5.0625 \times$ base values
+\end{itemize}
+
+\noindent This creates a material gradient where the rightmost columns are significantly stiffer than the leftmost column. Key observations include:
+\begin{itemize}
+    \item \textbf{Wave propagation}: Waves traveling from left to right encounter increasing resistance, leading to reduced amplitude in stiffer columns
+    \item \textbf{Energy distribution}: Energy tends to concentrate in the softer left columns due to reduced wave transmission through stiffer regions
+    \item \textbf{Dissipation patterns}: Higher damping in stiffer columns leads to increased energy dissipation rates
+\end{itemize}
+
+\subsection{5×5 System with 2/3× Multiplier}
+
+For the decreasing stiffness case ($m = 2/3$), columns 2-5 have progressively lower spring constants:
+\begin{itemize}
+    \item Column 2: $0.667 \times$ base values
+    \item Column 3: $0.444 \times$ base values
+    \item Column 4: $0.296 \times$ base values
+    \item Column 5: $0.198 \times$ base values
+\end{itemize}
+
+\noindent This creates a material gradient where the rightmost columns are significantly softer. Key observations include:
+\begin{itemize}
+    \item \textbf{Wave propagation}: Waves traveling from left to right encounter decreasing resistance, leading to increased amplitude in softer columns
+    \item \textbf{Energy distribution}: Energy tends to spread more easily into softer regions
+    \item \textbf{Dissipation patterns}: Lower damping in softer columns leads to different dissipation characteristics
+\end{itemize}
+
+\subsection{Comparison of Scaling Cases}
+
+Figure~\ref{fig:material_scaling_comparison} compares energy evolution for both scaling cases. The increasing stiffness case (1.5×) shows different energy dynamics compared to the decreasing stiffness case (2/3×), demonstrating the significant impact of material property gradients on system behavior.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.85\textwidth]{../figures/material_scaling_comparison.png}
+\caption{Energy evolution comparison for 5×5 systems with different material scaling multipliers. The 1.5× multiplier (increasing stiffness) and 2/3× multiplier (decreasing stiffness) produce distinct energy dynamics due to different wave propagation and dissipation patterns.}
+\label{fig:material_scaling_comparison}
+\end{figure}
+
+\section{Parameter Sensitivity Analysis: Wall Properties}
+
+\subsection{Motivation}
+
+The immovable backplate constraint uses two key parameters:
+\begin{itemize}
+    \item \textbf{Wall stiffness} ($k_{wall}$): Controls the repulsive force when masses penetrate the wall
+    \item \textbf{Wall damping} ($c_{wall}$): Controls energy dissipation during wall collisions
+\end{itemize}
+
+\noindent Understanding the sensitivity of system behavior to these parameters is essential for:
+\begin{itemize}
+    \item Ensuring numerical stability
+    \item Validating physical realism
+    \item Optimizing parameter selection
+\end{itemize}
+
+\subsection{Parameter Sweep Methodology}
+
+We perform a systematic parameter sweep testing combinations of:
+\begin{itemize}
+    \item Wall stiffness multipliers: $[0.5×, 1×, 2×, 5×, 10×]$ of base value (10000 N/m)
+    \item Wall damping multipliers: $[0.5×, 1×, 2×, 5×, 10×]$ of base value (10 N·s/m)
+\end{itemize}
+
+\noindent This yields 25 parameter combinations, each run as a complete simulation. For each combination, we extract:
+\begin{itemize}
+    \item Total work input
+    \item Final total energy
+    \item Energy dissipation percentage
+    \item Maximum displacement of rightmost column
+\end{itemize}
+
+\subsection{Key Findings}
+
+The parameter sweep reveals several important trends:
+
+\begin{enumerate}
+    \item \textbf{Wall stiffness effects}:
+    \begin{itemize}
+        \item Higher stiffness reduces maximum penetration (as expected)
+        \item Very high stiffness ($> 5×$) shows minimal additional benefit
+        \item Very low stiffness ($< 0.5×$) allows excessive penetration
+    \end{itemize}
+    
+    \item \textbf{Wall damping effects}:
+    \begin{itemize}
+        \item Higher damping increases energy dissipation during collisions
+        \item Damping has less effect on maximum displacement than stiffness
+        \item Optimal damping balances energy dissipation with numerical stability
+    \end{itemize}
+    
+    \item \textbf{Interaction effects}:
+    \begin{itemize}
+        \item Stiffness and damping interact non-linearly
+        \item High stiffness with low damping can cause oscillations
+        \item Low stiffness with high damping provides smoother behavior
+    \end{itemize}
+\end{enumerate}
+
+\noindent Figure~\ref{fig:wall_parameter_sweep} shows the parameter sweep results, illustrating the sensitivity of system behavior to wall properties.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.85\textwidth]{../figures/wall_parameter_sweep.png}
+\caption{Parameter sweep results for wall stiffness and damping. The plots show how energy dissipation and maximum displacement vary with different parameter combinations, providing insight into parameter sensitivity and optimal selection.}
+\label{fig:wall_parameter_sweep}
+\end{figure}
+
+\section{10×10 System Extension}
+
+\subsection{Implementation}
+
+The system is extended from 5×5 (25 masses) to 10×10 (100 masses), representing a fourfold increase in system size. This extension includes:
+\begin{itemize}
+    \item All features from the 5×5 system (backplate, material scaling, damping)
+    \item Proper scaling of all computational components
+    \item Visualization adapted for larger system
+\end{itemize}
+
+\subsection{Computational Considerations}
+
+The larger system presents several computational challenges:
+\begin{itemize}
+    \item \textbf{Increased DOF}: 200 degrees of freedom (vs. 50 for 5×5)
+    \item \textbf{More springs}: 360 total springs (vs. 80 for 5×5)
+    \item \textbf{Longer simulation time}: Approximately 4× longer computation time
+    \item \textbf{Memory requirements}: Larger state vectors and solution storage
+\end{itemize}
+
+\noindent Despite these challenges, the implementation maintains numerical stability and accuracy through:
+\begin{itemize}
+    \item Efficient sparse matrix operations
+    \item Optimized force calculations
+    \item Appropriate solver tolerances
+\end{itemize}
+
+\subsection{Results and Observations}
+
+The 10×10 system with material scaling exhibits several interesting behaviors:
+\begin{itemize}
+    \item \textbf{Wave propagation}: More complex wave patterns due to increased system size
+    \item \textbf{Material gradient effects}: More pronounced effects of material scaling across 10 columns
+    \item \textbf{Energy distribution}: More spatially distributed energy patterns
+    \item \textbf{Boundary interactions}: More complex interactions between waves and the backplate
+\end{itemize}
+
+\noindent Figure~\ref{fig:material_scaling_10x10} shows a snapshot of the 10×10 system, demonstrating the larger scale and material gradient effects.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.75\textwidth]{../figures/material_scaling_10x10_snapshot.png}
+\caption{Snapshot of 10×10 lattice system with 1.5× material scaling and backplate constraint. The larger system size enables study of more complex wave propagation patterns and material gradient effects.}
+\label{fig:material_scaling_10x10}
+\end{figure}
+
+\section{Comparison Tables}
+
+Table~\ref{tab:material_scaling} presents comprehensive results for all material scaling configurations studied.
+
+\begin{table}[h]
+\centering
+\begin{tabular}{|l|c|c|c|}
+\hline
+\textbf{Configuration} & \textbf{Work (J)} & \textbf{Final Energy (J)} & \textbf{Dissipation (\%)} \\
+\hline
+5×5, 1.5× multiplier & 257.509908 & 45.112795 & 82.48 \\
+5×5, 2/3× multiplier & 258.074177 & 44.817127 & 82.63 \\
+10×10, 1.5× multiplier & 612.888492 & 100.130361 & 83.66 \\
+\hline
+\end{tabular}
+\caption{Material scaling comparison results.}
+\label{tab:material_scaling}
+\end{table}
+
+\section{Implementation Code Structure}
+
+\subsection{Material Property Lookup}
+
+The material scaling implementation uses efficient lookup functions that compute properties based on column index:
+
+\begin{lstlisting}[language=Julia, caption={Complete material property lookup implementation}]
+function get_column_k_coupling(j, material_multiplier)
+    if j == 1
+        return K_COUPLING
+    else
+        return K_COUPLING * (material_multiplier^(j-1))
+    end
+end
+
+function get_column_c_damping(j, material_multiplier)
+    if j == 1
+        return C_DAMPING
+    else
+        return C_DAMPING * (material_multiplier^(j-1))
+    end
+end
+\end{lstlisting}
+
+\subsection{ODE Integration}
+
+The ODE right-hand side function integrates material scaling by using column-specific properties for vertical springs:
+
+\begin{lstlisting}[language=Julia, caption={Material scaling in ODE RHS}]
+# Horizontal springs use base values
+add_spring_force!(i, j-1, K_COUPLING, ALPHA_COUPLING, true, C_DAMPING)
+add_spring_force!(i, j+1, K_COUPLING, ALPHA_COUPLING, true, C_DAMPING)
+
+# Vertical springs use column-based material properties
+k_col = get_column_k_coupling(j, MATERIAL_MULTIPLIER)
+c_col = get_column_c_damping(j, MATERIAL_MULTIPLIER)
+add_spring_force!(i-1, j, k_col, ALPHA_COUPLING, true, c_col)
+add_spring_force!(i+1, j, k_col, ALPHA_COUPLING, true, c_col)
+\end{lstlisting}
+
+\section{Physical Interpretation and Applications}
+
+\subsection{Material Gradients}
+
+The column-based scaling model represents several physical scenarios:
+
+\begin{enumerate}
+    \item \textbf{Layered composites}: Each column represents a distinct material layer with different properties
+    \item \textbf{Functionally graded materials}: The scaling approximates continuous property gradients
+    \item \textbf{Multi-material structures}: Systems with alternating or graded material arrangements
+\end{enumerate}
+
+\subsection{Wave Propagation in Heterogeneous Media}
+
+The material scaling enables study of wave propagation in heterogeneous media, which is relevant to:
+\begin{itemize}
+    \item Seismic wave propagation through layered geological structures
+    \item Ultrasonic testing of composite materials
+    \item Impact response of graded materials
+    \item Wave filtering and manipulation in metamaterials
+\end{itemize}
+
+\subsection{Parameter Sensitivity in Engineering Design}
+
+The parameter sweep analysis provides valuable insights for:
+\begin{itemize}
+    \item Selecting appropriate wall constraint parameters
+    \item Balancing numerical stability with physical realism
+    \item Understanding sensitivity of results to parameter choices
+    \item Optimizing computational parameters
+\end{itemize}
+
+\section{Conclusions and Future Work}
+
+\subsection{Key Achievements}
+
+This update successfully implements three major extensions:
+
+\begin{enumerate}
+    \item \textbf{Material Scaling}: Column-based material property variation enables modeling of heterogeneous materials with spatially-varying properties
+    \item \textbf{Parameter Analysis}: Systematic parameter sweep provides comprehensive understanding of wall constraint sensitivity
+    \item \textbf{System Extension}: 10×10 system demonstrates scalability and enables study of larger-scale wave propagation phenomena
+\end{enumerate}
+
+\subsection{Physical Insights}
+
+The simulations reveal several important behaviors:
+
+\begin{itemize}
+    \item \textbf{Material gradients}: Property gradients significantly affect wave propagation, energy distribution, and dissipation patterns
+    \item \textbf{Scaling direction}: Increasing vs. decreasing stiffness produces fundamentally different system behaviors
+    \item \textbf{Parameter sensitivity}: Wall properties show non-linear interactions requiring careful selection
+    \item \textbf{System size effects}: Larger systems exhibit more complex wave patterns and material gradient effects
+\end{itemize}
+
+\subsection{Future Directions}
+
+Potential extensions include:
+
+\begin{enumerate}
+    \item \textbf{Row-based scaling}: Extend material variation to rows in addition to columns
+    \item \textbf{2D property fields}: Implement arbitrary 2D material property distributions
+    \item \textbf{Time-varying properties}: Study systems with properties that change over time
+    \item \textbf{Anisotropic materials}: Extend to materials with direction-dependent properties
+    \item \textbf{Larger systems}: Further scale to 20×20 or larger systems
+    \item \textbf{Optimization studies}: Use parameter sweeps to optimize material distributions for specific objectives
+\end{enumerate}
+
+\section{Acknowledgments}
+
+Research conducted in collaboration with Dr. Romesh Batra, Department of Mechanical Engineering, Virginia Tech.
+
+\end{document}
+

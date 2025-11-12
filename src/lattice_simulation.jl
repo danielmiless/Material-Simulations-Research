@@ -20,7 +20,6 @@ using DifferentialEquations
 using LinearAlgebra
 using Printf
 using GLMakie
-using Observables
 
 
 ########################################################################
@@ -34,6 +33,7 @@ const ALPHA_DIAGONAL = 10.0      # exponential decay rate for diagonal springs (
 const C_DAMPING   = 5.0          # N·s/m damping coefficient for nearest-neighbor springs
 const F_ACTIVE_TIME = 0.05       # duration of the driving pulse (s)
 const F_MAG       = 250.0         # N, magnitude of external force
+const MATERIAL_MULTIPLIER = 1.5   # Material property scaling factor for columns (1.5 for first case, 2/3 for second case)
 
 
 ########################################################################
@@ -78,6 +78,46 @@ const GRID_SPACING = 1.0         # Spacing between equilibrium positions
 @inline lattice_idx(i,j) = (i-1)*N + j                    # (i,j) → mass index 1…25
 @inline lattice_i(k) = 1 + div(k-1,N)                     # mass index → row
 @inline lattice_j(k) = 1 + mod(k-1,N)                     # mass index → column
+
+
+########################################################################
+#  MATERIAL PROPERTY LOOKUP FUNCTIONS (COLUMN-BASED SCALING)
+########################################################################
+function get_column_k_coupling(j, material_multiplier)
+    """
+    Get spring constant for nearest-neighbor springs in column j.
+    Column 1 uses base value, columns 2-5 use scaled values.
+    """
+    if j == 1
+        return K_COUPLING
+    else
+        return K_COUPLING * (material_multiplier^(j-1))
+    end
+end
+
+function get_column_k_diagonal(j, material_multiplier)
+    """
+    Get spring constant for diagonal springs in column j.
+    Column 1 uses base value, columns 2-5 use scaled values.
+    """
+    if j == 1
+        return K_DIAGONAL
+    else
+        return K_DIAGONAL * (material_multiplier^(j-1))
+    end
+end
+
+function get_column_c_damping(j, material_multiplier)
+    """
+    Get damping coefficient for nearest-neighbor springs in column j.
+    Column 1 uses base value, columns 2-5 use scaled values.
+    """
+    if j == 1
+        return C_DAMPING
+    else
+        return C_DAMPING * (material_multiplier^(j-1))
+    end
+end
 
 
 ########################################################################
@@ -171,7 +211,7 @@ function lattice_2d_rhs_with_diagonals!(du, u, p, t)
         vel_k = vel[:, k]
         
         # Helper function to add spring force from neighbor
-        function add_spring_force!(neighbor_i, neighbor_j, k_spring, alpha_spring, add_damping=false)
+        function add_spring_force!(neighbor_i, neighbor_j, k_spring, alpha_spring, add_damping=false, damping_coeff=C_DAMPING)
             if 1 <= neighbor_i <= N && 1 <= neighbor_j <= N
                 neighbor_idx = lattice_idx(neighbor_i, neighbor_j)
                 pos_neighbor = pos[:, neighbor_idx]
@@ -183,17 +223,22 @@ function lattice_2d_rhs_with_diagonals!(du, u, p, t)
                 
                 # Damping force (only for nearest neighbors)
                 if add_damping
-                    damping = damping_force_2d(vel_k, vel_neighbor, C_DAMPING)
+                    damping = damping_force_2d(vel_k, vel_neighbor, damping_coeff)
                     dvel[:, k] += damping
                 end
             end
         end
         
         # NEAREST NEIGHBOR SPRINGS (horizontal and vertical) WITH DAMPING
-        add_spring_force!(i, j-1, K_COUPLING, ALPHA_COUPLING, true)  # left
-        add_spring_force!(i, j+1, K_COUPLING, ALPHA_COUPLING, true)  # right
-        add_spring_force!(i-1, j, K_COUPLING, ALPHA_COUPLING, true)  # up
-        add_spring_force!(i+1, j, K_COUPLING, ALPHA_COUPLING, true)  # down
+        # Horizontal springs use base values
+        add_spring_force!(i, j-1, K_COUPLING, ALPHA_COUPLING, true, C_DAMPING)  # left
+        add_spring_force!(i, j+1, K_COUPLING, ALPHA_COUPLING, true, C_DAMPING)  # right
+        
+        # Vertical springs use column-based material properties
+        k_col = get_column_k_coupling(j, MATERIAL_MULTIPLIER)
+        c_col = get_column_c_damping(j, MATERIAL_MULTIPLIER)
+        add_spring_force!(i-1, j, k_col, ALPHA_COUPLING, true, c_col)  # up
+        add_spring_force!(i+1, j, k_col, ALPHA_COUPLING, true, c_col)  # down
         
         # DIAGONAL SPRINGS (next-nearest neighbors in X pattern) WITHOUT DAMPING
         add_spring_force!(i-1, j-1, K_DIAGONAL, ALPHA_DIAGONAL, false)  # upper-left
