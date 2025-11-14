@@ -335,10 +335,21 @@ ax = Axis(fig[1, 1],
           xlabel = "Time (s)",
           ylabel = "Energy (J)")
 
+# Use lines with different styles and occasional markers to make differences more visible
+# Plot lines first
 lines!(ax, data_1_5["time"], data_1_5["energy"],
-       color = :blue, linewidth = 2, label = "1.5× Multiplier")
+       color = :blue, linewidth = 3, label = "1.5× Multiplier", linestyle = :solid)
 lines!(ax, data_2_3["time"], data_2_3["energy"],
-       color = :red, linewidth = 2, label = "2/3× Multiplier")
+       color = :red, linewidth = 3, label = "2/3× Multiplier", linestyle = :dash)
+
+# Add markers at regular intervals (every 20th point) to distinguish lines without overwhelming the plot
+marker_interval = max(1, div(length(data_1_5["time"]), 30))  # ~30 markers total
+scatter!(ax, data_1_5["time"][1:marker_interval:end], data_1_5["energy"][1:marker_interval:end],
+         color = :blue, markersize = 10, marker = :circle, 
+         strokewidth = 1, strokecolor = :white)
+scatter!(ax, data_2_3["time"][1:marker_interval:end], data_2_3["energy"][1:marker_interval:end],
+         color = :red, markersize = 10, marker = :rect,
+         strokewidth = 1, strokecolor = :white)
 
 work_line_1_5 = fill(data_1_5["total_work"], length(data_1_5["time"]))
 work_line_2_3 = fill(data_2_3["total_work"], length(data_2_3["time"]))
@@ -362,9 +373,19 @@ generate_snapshot(data_2_3["solution"], data_2_3["equilibrium_grid"], backplate_
                  "5×5 Lattice with 2/3× Material Scaling (t = $(round(data_2_3["time"][div(length(data_2_3["time"]), 2)], digits=2)) s)",
                  joinpath(figures_dir, "material_scaling_2_3_snapshot.png"))
 
+# For 10×10, take snapshot shortly after force is applied (around 0.2-0.25s)
+# Find the frame index closest to 0.2s after force application
+target_time_10x10 = 0.2  # Shortly after F_ACTIVE_TIME (0.15s)
+frame_idx_10x10 = 1
+for i in 1:length(data_10x10["time"])
+    if data_10x10["time"][i] >= target_time_10x10
+        frame_idx_10x10 = i
+        break
+    end
+end
 generate_snapshot(data_10x10["solution"], data_10x10["equilibrium_grid"], backplate_positions_10x10,
-                 "10×10 Lattice with 1.5× Material Scaling (t = $(round(data_10x10["time"][div(length(data_10x10["time"]), 2)], digits=2)) s)",
-                 joinpath(figures_dir, "material_scaling_10x10_snapshot.png"))
+                 "10×10 Lattice with 1.5× Material Scaling (t = $(round(data_10x10["time"][frame_idx_10x10], digits=2)) s)",
+                 joinpath(figures_dir, "material_scaling_10x10_snapshot.png"), frame_idx_10x10)
 println()
 
 # Print LaTeX table

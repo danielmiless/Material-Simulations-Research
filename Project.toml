@@ -2,7 +2,7 @@ name = "MaterialSimulations"
 uuid = "00000000-0000-0000-0000-000000000000"
 version = "0.1.0"
 authors = ["Daniel Miles <danielmiles@vt.edu>"]
-description = "Material simulations research: 2D mass-spring lattice systems with exponential springs, viscous damping, and boundary conditions"
+description = "Material simulations research: 2D mass-spring lattice systems with exponential springs, viscous damping, material scaling, and boundary conditions"
 
 [deps]
 CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"

@@ -12,7 +12,7 @@ The system includes:
 - Real-time visualization and animation
 - Energy tracking (with dissipation)
 
-Research conducted in collaboration with Dr. Rakesh Batra, Virginia Tech.
+Research conducted in collaboration with Dr. Romesh Batra, Distinguished Professor and Clifton C. Garvin Professor, Department of Mechanical Engineering, Virginia Tech.
 
 Author: Daniel Miles
 Institution: Virginia Tech

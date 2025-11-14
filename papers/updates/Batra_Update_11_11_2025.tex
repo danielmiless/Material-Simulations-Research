@@ -70,7 +70,7 @@ Many real-world materials exhibit spatial variation in mechanical properties. Ex
     \item \textbf{Multi-material structures}: Systems composed of different materials arranged in columns or layers
 \end{itemize}
 
-To model such systems, we implement column-based material scaling where each column (from left to right) has material properties scaled by a multiplicative factor relative to the base column.
+\noindent To model such systems, we implement column-based material scaling where each column (from left to right) has material properties scaled by a multiplicative factor relative to the base column.
 
 \subsection{Mathematical Formulation}
 
@@ -80,7 +80,7 @@ For a lattice with $N$ columns, we define material properties for column $j$ as:
 k_j = k_1 \cdot m^{j-1}
 \end{equation}
 
-where:
+\noindent where:
 \begin{itemize}
     \item $k_j$ is the spring constant for column $j$
     \item $k_1$ is the base spring constant (column 1)
@@ -97,9 +97,9 @@ where:
 
 \subsection{Implementation Details}
 
-Material properties are applied only to vertical springs within each column. Horizontal springs connecting columns use base values, maintaining continuity while allowing column-specific properties. This approach models a system where each column represents a distinct material layer.
+Material properties are applied only to vertical springs within each column. Horizontal springs connecting columns use base values, maintaining continuity while allowing column-specific properties. This approach models a system where each column represents a distinct material layer. \newline
 
-The implementation uses lookup functions:
+\noindent The implementation uses lookup functions:
 \begin{lstlisting}[language=Julia, caption={Material property lookup functions}]
 function get_column_k_coupling(j, material_multiplier)
     if j == 1
@@ -315,114 +315,6 @@ Table~\ref{tab:material_scaling} presents comprehensive results for all material
 \caption{Material scaling comparison results.}
 \label{tab:material_scaling}
 \end{table}
-
-\section{Implementation Code Structure}
-
-\subsection{Material Property Lookup}
-
-The material scaling implementation uses efficient lookup functions that compute properties based on column index:
-
-\begin{lstlisting}[language=Julia, caption={Complete material property lookup implementation}]
-function get_column_k_coupling(j, material_multiplier)
-    if j == 1
-        return K_COUPLING
-    else
-        return K_COUPLING * (material_multiplier^(j-1))
-    end
-end
-
-function get_column_c_damping(j, material_multiplier)
-    if j == 1
-        return C_DAMPING
-    else
-        return C_DAMPING * (material_multiplier^(j-1))
-    end
-end
-\end{lstlisting}
-
-\subsection{ODE Integration}
-
-The ODE right-hand side function integrates material scaling by using column-specific properties for vertical springs:
-
-\begin{lstlisting}[language=Julia, caption={Material scaling in ODE RHS}]
-# Horizontal springs use base values
-add_spring_force!(i, j-1, K_COUPLING, ALPHA_COUPLING, true, C_DAMPING)
-add_spring_force!(i, j+1, K_COUPLING, ALPHA_COUPLING, true, C_DAMPING)
-
-# Vertical springs use column-based material properties
-k_col = get_column_k_coupling(j, MATERIAL_MULTIPLIER)
-c_col = get_column_c_damping(j, MATERIAL_MULTIPLIER)
-add_spring_force!(i-1, j, k_col, ALPHA_COUPLING, true, c_col)
-add_spring_force!(i+1, j, k_col, ALPHA_COUPLING, true, c_col)
-\end{lstlisting}
-
-\section{Physical Interpretation and Applications}
-
-\subsection{Material Gradients}
-
-The column-based scaling model represents several physical scenarios:
-
-\begin{enumerate}
-    \item \textbf{Layered composites}: Each column represents a distinct material layer with different properties
-    \item \textbf{Functionally graded materials}: The scaling approximates continuous property gradients
-    \item \textbf{Multi-material structures}: Systems with alternating or graded material arrangements
-\end{enumerate}
-
-\subsection{Wave Propagation in Heterogeneous Media}
-
-The material scaling enables study of wave propagation in heterogeneous media, which is relevant to:
-\begin{itemize}
-    \item Seismic wave propagation through layered geological structures
-    \item Ultrasonic testing of composite materials
-    \item Impact response of graded materials
-    \item Wave filtering and manipulation in metamaterials
-\end{itemize}
-
-\subsection{Parameter Sensitivity in Engineering Design}
-
-The parameter sweep analysis provides valuable insights for:
-\begin{itemize}
-    \item Selecting appropriate wall constraint parameters
-    \item Balancing numerical stability with physical realism
-    \item Understanding sensitivity of results to parameter choices
-    \item Optimizing computational parameters
-\end{itemize}
-
-\section{Conclusions and Future Work}
-
-\subsection{Key Achievements}
-
-This update successfully implements three major extensions:
-
-\begin{enumerate}
-    \item \textbf{Material Scaling}: Column-based material property variation enables modeling of heterogeneous materials with spatially-varying properties
-    \item \textbf{Parameter Analysis}: Systematic parameter sweep provides comprehensive understanding of wall constraint sensitivity
-    \item \textbf{System Extension}: 10×10 system demonstrates scalability and enables study of larger-scale wave propagation phenomena
-\end{enumerate}
-
-\subsection{Physical Insights}
-
-The simulations reveal several important behaviors:
-
-\begin{itemize}
-    \item \textbf{Material gradients}: Property gradients significantly affect wave propagation, energy distribution, and dissipation patterns
-    \item \textbf{Scaling direction}: Increasing vs. decreasing stiffness produces fundamentally different system behaviors
-    \item \textbf{Parameter sensitivity}: Wall properties show non-linear interactions requiring careful selection
-    \item \textbf{System size effects}: Larger systems exhibit more complex wave patterns and material gradient effects
-\end{itemize}
-
-\subsection{Future Directions}
-
-Potential extensions include:
-
-\begin{enumerate}
-    \item \textbf{Row-based scaling}: Extend material variation to rows in addition to columns
-    \item \textbf{2D property fields}: Implement arbitrary 2D material property distributions
-    \item \textbf{Time-varying properties}: Study systems with properties that change over time
-    \item \textbf{Anisotropic materials}: Extend to materials with direction-dependent properties
-    \item \textbf{Larger systems}: Further scale to 20×20 or larger systems
-    \item \textbf{Optimization studies}: Use parameter sweeps to optimize material distributions for specific objectives
-\end{enumerate}
 
 \section{Acknowledgments}
 

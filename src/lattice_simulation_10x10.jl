@@ -13,7 +13,7 @@ The system includes:
 - Real-time visualization and animation
 - Energy tracking (with dissipation)
 
-Research conducted in collaboration with Dr. Rakesh Batra, Virginia Tech.
+Research conducted in collaboration with Dr. Romesh Batra, Distinguished Professor and Clifton C. Garvin Professor, Department of Mechanical Engineering, Virginia Tech.
 
 Author: Daniel Miles
 Institution: Virginia Tech
@@ -45,7 +45,7 @@ const MATERIAL_MULTIPLIER = 2/3   # Material property scaling factor for columns
 ########################################################################
 #  FORCE CONFIGURATION PARAMETERS - EASILY CHANGEABLE
 ########################################################################
-const FORCE_ANGLE_DEGREES = 33.0    # Angle in degrees (0-360): 0=right, 90=up, 180=left, 270=down - horizontal to showcase column gradient
+const FORCE_ANGLE_DEGREES = 33.0    # Angle in degrees (0-360): 0=right, 90=up, 180=left, 270=down - configured to showcase column gradient
 const FORCE_TARGET_ROW = 5           # Row of target mass (1 to N) - middle row for 10×10
 const FORCE_TARGET_COL = 1           # Column of target mass (1 to N) - leftmost column to push through gradient
 

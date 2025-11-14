@@ -18,9 +18,12 @@ This project investigates the dynamics of 2D mass-spring lattice systems using e
 - 2D lattice systems with nearest-neighbor and diagonal spring connections
 - Viscous damping on nearest-neighbor springs (energy dissipation)
 - Immovable boundary conditions (backplate constraints)
+- Column-based material property scaling (heterogeneous materials)
 - Energy conservation, dissipation, and work calculations
 - Configurable external force application
+- Parameter sweep analysis for wall properties
 - Real-time visualization and animation
+- Multiple system sizes (5×5 and 10×10 lattices)
 
 ## Quick Start
 
@@ -52,8 +55,9 @@ Pkg.instantiate()
 
 The main simulation scripts are located in `src/`:
 
-- **`lattice_simulation.jl`**: Main simulation with exponential springs, viscous damping, and configurable forces
-- **`lattice_simulation_with_backplate.jl`**: Same as above, with an immovable backplate constraint
+- **`lattice_simulation.jl`**: 5×5 simulation with exponential springs, viscous damping, configurable forces, and material scaling
+- **`lattice_simulation_with_backplate.jl`**: 5×5 simulation with an immovable backplate constraint and material scaling
+- **`lattice_simulation_10x10.jl`**: 10×10 simulation with backplate and material scaling
 
 To run a simulation:
 
@@ -67,6 +71,12 @@ or
 julia --project=. src/lattice_simulation_with_backplate.jl
 ```
 
+or
+
+```bash
+julia --project=. src/lattice_simulation_10x10.jl
+```
+
 **Note**: Older deprecated scripts are available in `Deprecated Scripts/` for reference.
 
 ## Repository Structure
@@ -74,15 +84,18 @@ julia --project=. src/lattice_simulation_with_backplate.jl
 ```
 Material-Simulations-Research/
 ├── src/                    # Main simulation code
-│   ├── lattice_simulation.jl
-│   └── lattice_simulation_with_backplate.jl
+│   ├── lattice_simulation.jl              # 5×5 simulation with material scaling
+│   ├── lattice_simulation_with_backplate.jl  # 5×5 with backplate and material scaling
+│   └── lattice_simulation_10x10.jl       # 10×10 with backplate and material scaling
 ├── docs/                    # Comprehensive documentation
 ├── papers/                  # LaTeX papers and research updates
 │   ├── updates/            # Progress updates
 │   ├── figures/            # Figures for papers
 │   └── build/              # LaTeX build artifacts (gitignored)
 ├── scripts/                 # Utility scripts
-│   └── generate_comparison_data.jl  # Script for generating comparison figures
+│   ├── generate_comparison_data.jl        # Generate comparison figures
+│   ├── generate_update_paper_materials.jl # Generate all materials for update papers
+│   └── parameter_sweep_wall_properties.jl # Parameter sweep analysis
 ├── Deprecated Scripts/      # Older versions for reference
 ├── tests/                   # Test suite
 ├── animations/              # Generated animations
@@ -109,6 +122,8 @@ For detailed documentation, see the [docs/](docs/) directory:
 - Analyze energy dissipation through viscous damping
 - Study wave propagation and reflection at boundaries
 - Analyze response to external forces and boundary conditions
+- Model heterogeneous materials with column-based property scaling
+- Perform parameter sensitivity analysis for boundary conditions
 - Develop computational tools for material simulation
 
 ## Papers
