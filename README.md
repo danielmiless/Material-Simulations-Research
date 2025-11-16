@@ -23,7 +23,7 @@ This project investigates the dynamics of 2D mass-spring lattice systems using e
 - Configurable external force application
 - Parameter sweep analysis for wall properties
 - Real-time visualization and animation
-- Multiple system sizes (5×5 and 10×10 lattices)
+- Multiple system sizes (5×5, 10×10, and 11×11 lattices)
 
 ## Quick Start
 
@@ -53,40 +53,24 @@ Pkg.instantiate()
 
 ### Running Simulations
 
-The main simulation scripts are located in `src/`:
+The main simulation script is located in `src/`:
 
-- **`lattice_simulation.jl`**: 5×5 simulation with exponential springs, viscous damping, configurable forces, and material scaling
-- **`lattice_simulation_with_backplate.jl`**: 5×5 simulation with an immovable backplate constraint and material scaling
-- **`lattice_simulation_10x10.jl`**: 10×10 simulation with backplate and material scaling
+- **`lattice_simulation_11x11.jl`**: 11×11 simulation with backplate, material scaling, and distributed load
 
-To run a simulation:
+To run the simulation:
 
 ```bash
-julia --project=. src/lattice_simulation.jl
+julia --project=. src/lattice_simulation_11x11.jl
 ```
 
-or
-
-```bash
-julia --project=. src/lattice_simulation_with_backplate.jl
-```
-
-or
-
-```bash
-julia --project=. src/lattice_simulation_10x10.jl
-```
-
-**Note**: Older deprecated scripts are available in `Deprecated Scripts/` for reference.
+**Note**: Older simulation versions (5×5 and 10×10 systems) are available in `Deprecated Scripts/` for reference.
 
 ## Repository Structure
 
 ```
 Material-Simulations-Research/
 ├── src/                    # Main simulation code
-│   ├── lattice_simulation.jl              # 5×5 simulation with material scaling
-│   ├── lattice_simulation_with_backplate.jl  # 5×5 with backplate and material scaling
-│   └── lattice_simulation_10x10.jl       # 10×10 with backplate and material scaling
+│   └── lattice_simulation_11x11.jl       # 11×11 with backplate, material scaling, and distributed load
 ├── docs/                    # Comprehensive documentation
 ├── papers/                  # LaTeX papers and research updates
 │   ├── updates/            # Progress updates
@@ -95,8 +79,9 @@ Material-Simulations-Research/
 ├── scripts/                 # Utility scripts
 │   ├── generate_comparison_data.jl        # Generate comparison figures
 │   ├── generate_update_paper_materials.jl # Generate all materials for update papers
+│   ├── generate_distributed_load_figures.jl # Generate figures for distributed load paper
 │   └── parameter_sweep_wall_properties.jl # Parameter sweep analysis
-├── Deprecated Scripts/      # Older versions for reference
+├── Deprecated Scripts/      # Older simulation versions (5×5, 10×10) for reference
 ├── tests/                   # Test suite
 ├── animations/              # Generated animations
 └── data/                    # Data files

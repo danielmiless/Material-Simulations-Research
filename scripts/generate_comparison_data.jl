@@ -22,14 +22,15 @@ using LinearAlgebra
 
 # Paths
 src_dir = joinpath(@__DIR__, "..", "src")
+deprecated_dir = joinpath(@__DIR__, "..", "Deprecated Scripts")
 figures_dir = joinpath(@__DIR__, "..", "papers", "figures")
 mkpath(figures_dir)
 
 # Read simulation files and extract function definitions
 function load_simulation_code()
     """Load simulation code without executing it."""
-    sim_file_path = joinpath(src_dir, "lattice_simulation.jl")
-    bp_file_path = joinpath(src_dir, "lattice_simulation_with_backplate.jl")
+    sim_file_path = joinpath(deprecated_dir, "lattice_simulation.jl")
+    bp_file_path = joinpath(deprecated_dir, "lattice_simulation_with_backplate.jl")
     
     # Read files
     sim_code = read(sim_file_path, String)

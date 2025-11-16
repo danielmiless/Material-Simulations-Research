@@ -1,4 +1,4 @@
-name = "MaterialSimulations"
+# Anonymous project - no package name needed for script-based projects
 uuid = "00000000-0000-0000-0000-000000000000"
 version = "0.1.0"
 authors = ["Daniel Miles <danielmiles@vt.edu>"]

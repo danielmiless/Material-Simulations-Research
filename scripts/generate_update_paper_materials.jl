@@ -25,6 +25,7 @@ using Dates
 
 # Paths
 src_dir = joinpath(@__DIR__, "..", "src")
+deprecated_dir = joinpath(@__DIR__, "..", "Deprecated Scripts")
 figures_dir = joinpath(@__DIR__, "..", "papers", "figures")
 data_dir = joinpath(@__DIR__, "..", "data")
 mkpath(figures_dir)
@@ -87,7 +88,7 @@ function run_simulation_and_extract_data(sim_type, material_multiplier=nothing, 
     println("Running simulation: $(sim_type), multiplier=$(material_multiplier), N=$(n_size)")
     
     if sim_type == "backplate"
-        file_path = joinpath(src_dir, "lattice_simulation_with_backplate.jl")
+        file_path = joinpath(deprecated_dir, "lattice_simulation_with_backplate.jl")
         load_and_modify_simulation(file_path, material_multiplier, n_size)
         
         # Run simulation
@@ -150,7 +151,7 @@ function run_simulation_and_extract_data(sim_type, material_multiplier=nothing, 
         )
         
     elseif sim_type == "10x10"
-        file_path = joinpath(src_dir, "lattice_simulation_10x10.jl")
+        file_path = joinpath(deprecated_dir, "lattice_simulation_10x10.jl")
         load_and_modify_simulation(file_path, material_multiplier, 10)
         
         # Run simulation

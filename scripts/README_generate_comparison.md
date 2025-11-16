@@ -5,8 +5,8 @@ This script generates comparison data and figures for the LaTeX update document 
 ## What It Does
 
 1. **Runs both simulations**:
-   - Without backplate (using `lattice_simulation.jl`)
-   - With backplate (using `lattice_simulation_with_backplate.jl`)
+   - Without backplate (using `Deprecated Scripts/lattice_simulation.jl`)
+   - With backplate (using `Deprecated Scripts/lattice_simulation_with_backplate.jl`)
 
 2. **Extracts energy statistics**:
    - Total work input
@@ -40,7 +40,7 @@ julia scripts/generate_comparison_data.jl
 
 ## Requirements
 
-- Both simulation files must be present in `src/`:
+- Both simulation files must be present in `Deprecated Scripts/`:
   - `lattice_simulation.jl`
   - `lattice_simulation_with_backplate.jl`
 - Julia packages: DifferentialEquations, GLMakie, LinearAlgebra, Printf

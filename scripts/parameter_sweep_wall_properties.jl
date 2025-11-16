@@ -18,6 +18,7 @@ using Dates
 
 # Paths
 src_dir = joinpath(@__DIR__, "..", "src")
+deprecated_dir = joinpath(@__DIR__, "..", "Deprecated Scripts")
 figures_dir = joinpath(@__DIR__, "..", "papers", "figures")
 data_dir = joinpath(@__DIR__, "..", "data")
 mkpath(figures_dir)
@@ -26,7 +27,7 @@ mkpath(data_dir)
 # Read simulation file and extract function definitions
 function load_simulation_code()
     """Load simulation code without executing it."""
-    bp_file_path = joinpath(src_dir, "lattice_simulation_with_backplate.jl")
+    bp_file_path = joinpath(deprecated_dir, "lattice_simulation_with_backplate.jl")
     
     # Read file
     bp_code = read(bp_file_path, String)
