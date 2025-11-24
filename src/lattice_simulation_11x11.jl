@@ -25,6 +25,17 @@ using LinearAlgebra
 using Printf
 using GLMakie
 
+# CairoMakie is optional - only needed for headless animation recording
+# Load it conditionally to avoid errors when not needed
+HAS_CAIROMAKIE = false
+try
+    using CairoMakie
+    global HAS_CAIROMAKIE = true
+catch e
+    # CairoMakie not available - that's okay for optimization runs
+    global HAS_CAIROMAKIE = false
+end
+
 
 ########################################################################
 #  PHYSICAL PARAMETERS
@@ -39,7 +50,7 @@ const WALL_STIFFNESS = 10000.0   # N/m for wall repulsion force (very stiff to p
 const WALL_DAMPING = 10.0        # N·s/m damping coefficient for wall collisions
 const F_ACTIVE_TIME = 0.15       # duration of the driving pulse (s) - increased for larger system
 const F_MAG       = 1200.0        # N, total magnitude of distributed external force
-const BACKPLATE_DISTANCE = 1.0   # Distance from rightmost column to backplate (m)
+const BACKPLATE_DISTANCE = 0.001   # Distance from rightmost column to backplate (m) - essentially right next to lattice
 const MATERIAL_MULTIPLIER = 2/3   # Material property scaling factor for columns (1.5 for first case, 2/3 for second case)
 
 
@@ -56,6 +67,45 @@ const N = 11                     # ⇒ 11×11 = 121 masses
 const TOTAL_MASSES = N * N       # 121 masses total
 const DOF_PER_MASS = 2          # x and y components
 const TOTAL_DOF = TOTAL_MASSES * DOF_PER_MASS  # 242 position DOF
+
+
+########################################################################
+#  MATERIAL PROPERTY DEFINITIONS
+########################################################################
+"""
+Define N=11 distinct material property sets.
+Each material is a tuple: (k_coupling, k_diagonal, c_damping, alpha_coupling, alpha_diagonal)
+These are predefined and fixed - not optimized.
+"""
+function create_default_material_properties()
+    """
+    Create array of N=11 material property sets.
+    Uses current scaling pattern as baseline, but can be modified to arbitrary values.
+    """
+    materials = Vector{Tuple{Float64, Float64, Float64, Float64, Float64}}(undef, N)
+    
+    for i in 1:N
+        if i == 1
+            # Base material
+            materials[i] = (K_COUPLING, K_DIAGONAL, C_DAMPING, ALPHA_COUPLING, ALPHA_DIAGONAL)
+        else
+            # Scaled materials using current multiplier pattern
+            multiplier = MATERIAL_MULTIPLIER^(i-1)
+            materials[i] = (
+                K_COUPLING * multiplier,
+                K_DIAGONAL * multiplier,
+                C_DAMPING * multiplier,
+                ALPHA_COUPLING,  # Alpha typically doesn't scale
+                ALPHA_DIAGONAL   # Alpha typically doesn't scale
+            )
+        end
+    end
+    
+    return materials
+end
+
+# Default material properties (can be overridden)
+const DEFAULT_MATERIALS = create_default_material_properties()
 
 
 ########################################################################
@@ -86,11 +136,73 @@ const GRID_SPACING = 1.0         # Spacing between equilibrium positions
 
 
 ########################################################################
-#  MATERIAL PROPERTY LOOKUP FUNCTIONS (COLUMN-BASED SCALING)
+#  MATERIAL PROPERTY LOOKUP FUNCTIONS (COLUMN-BASED WITH ORDERING)
 ########################################################################
-function get_column_k_coupling(j, material_multiplier)
+function get_column_material_properties(j, material_order, materials)
+    """
+    Get material properties for column j based on material ordering.
+    
+    Args:
+        j: Column index (1 to N)
+        material_order: Array of material indices [1,2,...,N] specifying which material goes in each column
+        materials: Array of material property tuples
+    
+    Returns:
+        Tuple (k_coupling, k_diagonal, c_damping, alpha_coupling, alpha_diagonal)
+    """
+    material_idx = material_order[j]
+    return materials[material_idx]
+end
+
+function get_column_k_coupling(j, material_order, materials)
     """
     Get spring constant for nearest-neighbor springs in column j.
+    Uses material ordering to determine which material properties to use.
+    """
+    k_coupling, _, _, _, _ = get_column_material_properties(j, material_order, materials)
+    return k_coupling
+end
+
+function get_column_k_diagonal(j, material_order, materials)
+    """
+    Get spring constant for diagonal springs in column j.
+    Uses material ordering to determine which material properties to use.
+    """
+    _, k_diagonal, _, _, _ = get_column_material_properties(j, material_order, materials)
+    return k_diagonal
+end
+
+function get_column_c_damping(j, material_order, materials)
+    """
+    Get damping coefficient for nearest-neighbor springs in column j.
+    Uses material ordering to determine which material properties to use.
+    """
+    _, _, c_damping, _, _ = get_column_material_properties(j, material_order, materials)
+    return c_damping
+end
+
+function get_column_alpha_coupling(j, material_order, materials)
+    """
+    Get alpha (exponential decay rate) for nearest-neighbor springs in column j.
+    Uses material ordering to determine which material properties to use.
+    """
+    _, _, _, alpha_coupling, _ = get_column_material_properties(j, material_order, materials)
+    return alpha_coupling
+end
+
+function get_column_alpha_diagonal(j, material_order, materials)
+    """
+    Get alpha (exponential decay rate) for diagonal springs in column j.
+    Uses material ordering to determine which material properties to use.
+    """
+    _, _, _, _, alpha_diagonal = get_column_material_properties(j, material_order, materials)
+    return alpha_diagonal
+end
+
+# Legacy functions for backward compatibility (use default ordering)
+function get_column_k_coupling(j, material_multiplier)
+    """
+    Legacy function: Get spring constant for nearest-neighbor springs in column j.
     Column 1 uses base value, columns 2-11 use scaled values.
     """
     if j == 1
@@ -102,7 +214,7 @@ end
 
 function get_column_k_diagonal(j, material_multiplier)
     """
-    Get spring constant for diagonal springs in column j.
+    Legacy function: Get spring constant for diagonal springs in column j.
     Column 1 uses base value, columns 2-11 use scaled values.
     """
     if j == 1
@@ -114,7 +226,7 @@ end
 
 function get_column_c_damping(j, material_multiplier)
     """
-    Get damping coefficient for nearest-neighbor springs in column j.
+    Legacy function: Get damping coefficient for nearest-neighbor springs in column j.
     Column 1 uses base value, columns 2-11 use scaled values.
     """
     if j == 1
@@ -246,6 +358,26 @@ function lattice_2d_rhs_with_diagonals_and_backplate!(du, u, p, t)
     dpos = reshape(view(du, 1:TOTAL_DOF), 2, TOTAL_MASSES)
     dvel = reshape(view(du, TOTAL_DOF+1:2*TOTAL_DOF), 2, TOTAL_MASSES)
 
+    # Extract parameters: p should be a NamedTuple with material_order and materials
+    # If p is nothing, NullParameters, or missing, use default behavior
+    use_default = false
+    if p === nothing
+        use_default = true
+    elseif typeof(p).name.name == :NullParameters
+        use_default = true
+    elseif !(isa(p, NamedTuple) && haskey(p, :material_order))
+        use_default = true
+    end
+    
+    if use_default
+        # Legacy behavior: use MATERIAL_MULTIPLIER
+        material_order = collect(1:N)  # Default ordering
+        materials = DEFAULT_MATERIALS
+    else
+        material_order = p.material_order
+        materials = p.materials
+    end
+
     # --- kinematics: dx/dt = v ---
     dpos .= vel
 
@@ -279,21 +411,26 @@ function lattice_2d_rhs_with_diagonals_and_backplate!(du, u, p, t)
         end
         
         # NEAREST NEIGHBOR SPRINGS (horizontal and vertical) WITH DAMPING
-        # Horizontal springs use base values
+        # Horizontal springs use base values (or could use material properties of both columns)
+        # For now, keep horizontal springs using base values for simplicity
         add_spring_force!(i, j-1, K_COUPLING, ALPHA_COUPLING, true, C_DAMPING)  # left
         add_spring_force!(i, j+1, K_COUPLING, ALPHA_COUPLING, true, C_DAMPING)  # right
         
         # Vertical springs use column-based material properties
-        k_col = get_column_k_coupling(j, MATERIAL_MULTIPLIER)
-        c_col = get_column_c_damping(j, MATERIAL_MULTIPLIER)
-        add_spring_force!(i-1, j, k_col, ALPHA_COUPLING, true, c_col)  # up
-        add_spring_force!(i+1, j, k_col, ALPHA_COUPLING, true, c_col)  # down
+        k_col = get_column_k_coupling(j, material_order, materials)
+        c_col = get_column_c_damping(j, material_order, materials)
+        alpha_col = get_column_alpha_coupling(j, material_order, materials)
+        add_spring_force!(i-1, j, k_col, alpha_col, true, c_col)  # up
+        add_spring_force!(i+1, j, k_col, alpha_col, true, c_col)  # down
         
         # DIAGONAL SPRINGS (next-nearest neighbors in X pattern) WITHOUT DAMPING
-        add_spring_force!(i-1, j-1, K_DIAGONAL, ALPHA_DIAGONAL, false)  # upper-left
-        add_spring_force!(i-1, j+1, K_DIAGONAL, ALPHA_DIAGONAL, false)  # upper-right
-        add_spring_force!(i+1, j-1, K_DIAGONAL, ALPHA_DIAGONAL, false)  # lower-left
-        add_spring_force!(i+1, j+1, K_DIAGONAL, ALPHA_DIAGONAL, false)  # lower-right
+        # Use material properties from the column of the current mass
+        k_diag = get_column_k_diagonal(j, material_order, materials)
+        alpha_diag = get_column_alpha_diagonal(j, material_order, materials)
+        add_spring_force!(i-1, j-1, k_diag, alpha_diag, false)  # upper-left
+        add_spring_force!(i-1, j+1, k_diag, alpha_diag, false)  # upper-right
+        add_spring_force!(i+1, j-1, k_diag, alpha_diag, false)  # lower-left
+        add_spring_force!(i+1, j+1, k_diag, alpha_diag, false)  # lower-right
         
         # WALL CONSTRAINT (rightmost column cannot pass through backplate)
         if j == N  # Rightmost column
@@ -448,6 +585,75 @@ end
 
 
 ########################################################################
+#  BACKPLATE FORCE CALCULATION
+########################################################################
+function calculate_backplate_force(sol, wall_stiffness=WALL_STIFFNESS, wall_damping=WALL_DAMPING)
+    """
+    Calculate peak force transferred to the backplate.
+    
+    The force on the backplate is calculated from the wall constraint forces:
+    F = WALL_STIFFNESS * penetration + WALL_DAMPING * velocity_x
+    (when penetration > 0, i.e., when current_x > backplate_x)
+    
+    For armor applications (e.g., Kevlar vest simulation), peak force is the
+    critical metric as it determines injury thresholds and penetration risk.
+    
+    Args:
+        sol: ODE solution from DifferentialEquations
+        wall_stiffness: Wall stiffness coefficient (default: WALL_STIFFNESS)
+        wall_damping: Wall damping coefficient (default: WALL_DAMPING)
+    
+    Returns:
+        Peak force magnitude: max(|F_backplate(t)|) over all time
+    """
+    equilibrium_x = (N - 1) * GRID_SPACING
+    backplate_x = equilibrium_x + BACKPLATE_DISTANCE
+    
+    peak_force = 0.0
+    
+    for n in 1:length(sol.t)
+        t = sol.t[n]
+        u = sol.u[n]
+        
+        # Extract positions and velocities
+        pos = reshape(view(u, 1:TOTAL_DOF), 2, TOTAL_MASSES)
+        vel = reshape(view(u, TOTAL_DOF+1:2*TOTAL_DOF), 2, TOTAL_MASSES)
+        
+        # Calculate force on backplate from all masses in rightmost column
+        force_at_time = 0.0
+        
+        for i in 1:N
+            k = lattice_idx(i, N)  # Rightmost column, row i
+            pos_k = pos[:, k]
+            vel_k = vel[:, k]
+            
+            current_x = equilibrium_x + pos_k[1]  # absolute x position
+            
+            # If mass is in contact with or penetrating the backplate
+            if current_x > backplate_x
+                penetration = current_x - backplate_x
+                # Wall force magnitude (x-component, negative means repulsive)
+                wall_force_magnitude = wall_stiffness * penetration
+                
+                # Add damping component if moving toward wall
+                if vel_k[1] > 0  # Moving toward wall
+                    wall_force_magnitude += wall_damping * vel_k[1]
+                end
+                
+                # Sum force magnitude (we want total force at this time, so use absolute value)
+                force_at_time += abs(wall_force_magnitude)
+            end
+        end
+        
+        # Track peak force (time-independent metric)
+        peak_force = max(peak_force, force_at_time)
+    end
+    
+    return peak_force
+end
+
+
+########################################################################
 #  EQUILIBRIUM GRID POSITIONS
 ########################################################################
 function create_equilibrium_grid()
@@ -535,11 +741,69 @@ end
 
 
 ########################################################################
+#  OPTIMIZATION WRAPPER FUNCTION
+########################################################################
+function run_simulation_with_material_ordering(material_order; materials=DEFAULT_MATERIALS, return_solution=false)
+    """
+    Run simulation with specified material ordering and return peak backplate force.
+    
+    Args:
+        material_order: Array of material indices [1,2,...,N] specifying which material goes in each column
+        materials: Array of material property tuples (default: DEFAULT_MATERIALS)
+        return_solution: If true, also return the ODE solution (default: false)
+    
+    Returns:
+        Peak backplate force (maximum force magnitude), or (force, solution) if return_solution=true
+    """
+    # Validate material_order
+    if length(material_order) != N
+        error("material_order must have length N=$N, got $(length(material_order))")
+    end
+    
+    if !all(1 .<= material_order .<= N)
+        error("material_order must contain indices in range [1, $N]")
+    end
+    
+    # Set up ODE problem with material ordering
+    u0 = zeros(2 * TOTAL_DOF)
+    tspan = (0.0, T_END)
+    
+    # Create parameters tuple
+    p = (material_order=material_order, materials=materials)
+    
+    prob = ODEProblem(lattice_2d_rhs_with_diagonals_and_backplate!, u0, tspan, p)
+    sol = solve(prob, Vern9();
+                reltol = REL_TOL, 
+                abstol = ABS_TOL,
+                saveat = OUTPUT_INTERVAL,
+                dense = false)
+    
+    if sol.retcode != :Success
+        error("Solver failed: $(sol.retcode)")
+    end
+    
+    # Calculate total backplate force
+    total_force = calculate_backplate_force(sol)
+    
+    if return_solution
+        return total_force, sol
+    else
+        return total_force
+    end
+end
+
+
+########################################################################
 #  MAIN SIMULATION AND ANIMATION FUNCTION
 ########################################################################
-function run_2d_simulation_with_configurable_force_and_backplate()
+function run_2d_simulation_with_configurable_force_and_backplate(; material_order=nothing, materials=DEFAULT_MATERIALS)
     """
     Main simulation function with distributed load on left edge and immovable backplate.
+    
+    Args:
+        material_order: Optional array of material indices. If nothing, uses default MATERIAL_MULTIPLIER behavior.
+        materials: Array of material property tuples (default: DEFAULT_MATERIALS)
+    
     Returns: (figure, solution, total_work, final_energy)
     """
     println("11×11 Lattice Mass-Spring System with Distributed Load, Immovable Backplate, and Material Scaling")
@@ -595,12 +859,23 @@ function run_2d_simulation_with_configurable_force_and_backplate()
     println("  Force direction components: fx = $(round(fx_unit, digits=3)), fy = $(round(fy_unit, digits=3))")
     println("")
 
+    # Determine material ordering
+    if material_order === nothing
+        # Use default behavior (legacy: MATERIAL_MULTIPLIER)
+        material_order = collect(1:N)
+        # Create parameters for legacy behavior (will use MATERIAL_MULTIPLIER in lookup functions)
+        p = nothing
+    else
+        # Use provided material ordering
+        p = (material_order=material_order, materials=materials)
+    end
+
     # Initial state: all masses at rest at equilibrium positions
     u0 = zeros(2 * TOTAL_DOF)
     tspan = (0.0, T_END)
 
     # Create and solve ODE problem
-    prob = ODEProblem(lattice_2d_rhs_with_diagonals_and_backplate!, u0, tspan)
+    prob = ODEProblem(lattice_2d_rhs_with_diagonals_and_backplate!, u0, tspan, p)
     sol = solve(prob, Vern9();
                 reltol = REL_TOL, 
                 abstol = ABS_TOL,
@@ -878,7 +1153,12 @@ end
 function save_animation_to_file(filename = "lattice_anim_11x11_with_backplate.mp4")
     """
     Save the animation to a video file with distributed load display and backplate.
+    Uses CairoMakie for faster headless rendering.
     """
+    if !HAS_CAIROMAKIE
+        error("CairoMakie is required for saving animations. Install with: using Pkg; Pkg.add(\"CairoMakie\")")
+    end
+    
     println("Creating animation file: $filename")
     
     # Ensure directory exists
@@ -904,6 +1184,13 @@ function save_animation_to_file(filename = "lattice_anim_11x11_with_backplate.mp
     
     # Extract position data
     all_positions = [reshape(view(sol.u[i], 1:TOTAL_DOF), 2, TOTAL_MASSES) for i in 1:length(sol.t)]
+    
+    # Use CairoMakie for faster headless rendering
+    if HAS_CAIROMAKIE
+        CairoMakie.activate!()
+    else
+        error("CairoMakie is required for saving animations")
+    end
     
     # Create figure for recording
     fig = Figure(size = (1400, 900), fontsize = 14)
@@ -935,7 +1222,8 @@ function save_animation_to_file(filename = "lattice_anim_11x11_with_backplate.mp
     # Precompute backplate line points (static)
     backplate_line_points = Point2f[backplate_positions[:, i] for i in 1:N]
     
-    # Record animation
+    # Record animation with CairoMakie (faster than GLMakie for headless rendering)
+    println("Rendering $(length(sol.t)) frames...")
     record(fig, filename, 1:length(sol.t); framerate = 30) do frame
         empty!(ax)
         
@@ -973,7 +1261,15 @@ function save_animation_to_file(filename = "lattice_anim_11x11_with_backplate.mp
         
         # Add title with current configuration
         ax.title = "Distributed Load: $(F_MAG)N total @ $(FORCE_ANGLE_DEGREES)° on column 1 - Time: $(round(sol.t[frame], digits=3))s"
+        
+        # Progress indicator every 100 frames
+        if frame % 100 == 0
+            println("  Frame $frame / $(length(sol.t)) ($(round(100*frame/length(sol.t), digits=1))%)")
+        end
     end
+    
+    # Switch back to GLMakie for interactive use
+    GLMakie.activate!()
     
     println("Animation saved to: $filename")
 end
@@ -982,11 +1278,13 @@ end
 ########################################################################
 #  RUN SIMULATION
 ########################################################################
-# Run the interactive simulation
-# Use semicolon to suppress verbose output in REPL
-fig, sol, work_total, final_energy = run_2d_simulation_with_configurable_force_and_backplate();
-
-# Save animation to file (automatically updates on each run)
-# Use semicolon to suppress verbose output
-save_animation_to_file("animations/lattice_anim_11x11_with_backplate.mp4");
+# Run the interactive simulation (only if this file is run directly, not when included)
+if abspath(PROGRAM_FILE) == @__FILE__
+    # Use semicolon to suppress verbose output in REPL
+    fig, sol, work_total, final_energy = run_2d_simulation_with_configurable_force_and_backplate();
+    
+    # Save animation to file (automatically updates on each run)
+    # Use semicolon to suppress verbose output
+    save_animation_to_file("animations/lattice_anim_11x11_with_backplate.mp4");
+end
 

@@ -1,16 +1,17 @@
-# Anonymous project - no package name needed for script-based projects
 uuid = "00000000-0000-0000-0000-000000000000"
-version = "0.1.0"
 authors = ["Daniel Miles <danielmiles@vt.edu>"]
 description = "Material simulations research: 2D mass-spring lattice systems with exponential springs, viscous damping, material scaling, and boundary conditions"
+version = "0.1.0"
 
 [deps]
 CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
 DifferentialEquations = "0c46a032-eb83-5123-abaf-570d42b7fbaa"
+Evolutionary = "86b6b26d-c046-49b6-aa0b-5f0f74682bd6"
 GLMakie = "e9467ef8-e4e7-5192-8a1a-b1aee30e663a"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+Metaheuristics = "bcdb8e00-2c21-11e9-3065-2b553b22f898"
+Optim = "429524aa-4258-5aef-a3af-852621145aeb"
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 
 [compat]
 julia = "1.9"
-

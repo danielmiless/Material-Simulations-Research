@@ -1,0 +1,8 @@
+Optimizer,Peak_Force_N,Evaluations,Time_s,Success
+Metaheuristics_DE,,,,false
+Metaheuristics_ES,,,,false
+BlackBoxOptim,1422.3095267473154,53,2627.464581012726,true
+Metaheuristics_ECA,,,,false
+Evolutionary,,,,false
+Metaheuristics_PSO,,,,false
+Optim,,,,false

@@ -1,0 +1,33 @@
+# Optimizer Comparison Results
+# Date: 2025-11-24T03:46:34.397
+
+## Metaheuristics_DE
+Success: No
+Error: UndefVarError(:DE, Main)
+
+## Metaheuristics_ES
+Success: No
+Error: ErrorException("ES/CMA_ES algorithm not available in this version of Metaheuristics.jl. Use :PSO, :DE, or :ECA instead.")
+
+## BlackBoxOptim
+Success: Yes
+Best Peak Force: 1422.3095267473154
+Best Permutation: [1, 9, 11, 8, 5, 6, 7, 4, 3, 2, 10]
+Evaluations: 53
+
+## Metaheuristics_ECA
+Success: No
+Error: UndefVarError(:optimize, Main)
+
+## Evolutionary
+Success: No
+Error: UndefVarError(:ga, Evolutionary)
+
+## Metaheuristics_PSO
+Success: No
+Error: UndefVarError(:optimize, Main)
+
+## Optim
+Success: No
+Error: UndefVarError(:optimize, Main)
+
