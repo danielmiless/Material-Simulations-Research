@@ -15,6 +15,7 @@ This research project investigates the dynamics of 2D mass-spring lattice system
 - [Methodology](methodology.md) - Research methodology, theoretical background, and approach
 - [Models](models.md) - Detailed descriptions of the mathematical models used
 - [Results](results.md) - Results, analysis, and findings (work in progress)
+- [Optimization](optimization.md) - Material ordering optimization framework
 
 ### Technical Documentation
 - [API Reference](api-reference.md) - Code documentation and function references
@@ -23,6 +24,7 @@ This research project investigates the dynamics of 2D mass-spring lattice system
 
 - [Main README](../README.md) - Project overview and quick start
 - [Source Code](../src/) - Simulation code
+- [Optimization Scripts](../scripts/optimization/) - Material ordering optimization
 - [Papers](../papers/) - LaTeX papers and research updates
 
 ## Project Status

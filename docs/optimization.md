@@ -102,33 +102,41 @@ Four optimization packages are tested, each with different approaches:
 
 Each optimizer can be run independently:
 
-```julia
+```bash
 # BlackBoxOptim
-julia scripts/optimization/optimize_blackbox.jl
+julia --project=. scripts/optimization/optimize_blackbox.jl
 
 # Optim.jl
-julia scripts/optimization/optimize_optim.jl
+julia --project=. scripts/optimization/optimize_optim.jl
 
 # Evolutionary.jl
-julia scripts/optimization/optimize_evolutionary.jl
+julia --project=. scripts/optimization/optimize_evolutionary.jl
 
 # Metaheuristics.jl
-julia scripts/optimization/optimize_metaheuristics.jl
+julia --project=. scripts/optimization/optimize_metaheuristics.jl
 ```
 
 ### Comparing All Optimizers
 
-Run the comparison script to test all optimizers:
+Run the comparison script to test all optimizers. The comparison runs all optimizers **in parallel** by default:
 
-```julia
-julia scripts/optimization/compare_optimizers.jl
+```bash
+# Quick test (2-5 evaluations, takes ~5-15 minutes)
+./scripts/optimization/run_overnight.sh 5
+
+# Full run (50-100 evaluations, takes ~4-7 hours)
+./scripts/optimization/run_overnight.sh 50
+
+# Or directly with Julia
+MAX_EVALUATIONS=20 julia --project=. -e 'include("scripts/optimization/compare_optimizers.jl")'
 ```
 
-This will:
-1. Run each optimizer with the same configuration
-2. Compare results (best force, number of evaluations, computation time)
-3. Generate a summary table
-4. Save results to `scripts/optimization/comparison_results.txt`
+The comparison script will:
+1. Run each optimizer **in parallel** (saving significant time)
+2. Display live progress updates for all optimizers
+3. Compare results (best force, number of evaluations, computation time)
+4. Generate convergence plots, LaTeX tables, and CSV data files
+5. Save all results to `scripts/optimization/comparison_output/`
 
 ### Custom Material Properties
 
@@ -220,28 +228,50 @@ The optimization code is in separate scripts in `scripts/optimization/` that imp
 
 ## Results
 
-Results from optimization runs are saved in the `scripts/optimization/` directory:
+Results from optimization runs are saved in the `scripts/optimization/comparison_output/` directory:
 
-- Individual optimizer results: `results_<optimizer>.txt`
-- Comparison results: `comparison_results.txt`
+### Main Output Files
 
-Each result file contains:
+- **`comparison_results.txt`**: Human-readable summary of all optimizers
+- **`optimizer_summary.csv`**: CSV table with key metrics for each optimizer
+- **`optimizer_comparison_table.tex`**: LaTeX table for papers
+- **`optimizer_convergence_comparison.png`**: Convergence plot comparing all optimizers
+- **`convergence_<Optimizer>.csv`**: Individual convergence data for each optimizer
+
+### Timestamped Run Directories
+
+When using `run_overnight.sh`, results are also saved to timestamped directories:
+- `overnight_run_YYYYMMDD_HHMMSS/`: Contains a copy of all output files and the run log
+
+### Result Contents
+
+Each result includes:
 - Best peak force value found (maximum force magnitude)
 - Best permutation (material ordering)
 - Number of function evaluations
 - Elapsed time
 - Configuration parameters
-- Peak force history (if tracking enabled)
+- Convergence history (force vs. evaluations)
+
+## Parallel Execution
+
+The comparison script runs all optimizers **in parallel** by default using Julia's threading capabilities. This means:
+
+- **Time savings**: Total time is approximately the time of the slowest optimizer, not the sum
+- **Live progress**: Real-time progress updates show which optimizers are running
+- **Thread-safe**: Progress tracking and result collection are thread-safe
+
+For example, if you have 7 optimizers and each takes 1 hour, the parallel version completes in ~1 hour instead of 7 hours.
 
 ## Future Work
 
 Potential improvements and extensions:
 
-1. **Parallel Evaluation**: Run multiple simulations in parallel to speed up optimization
-2. **Surrogate Models**: Use machine learning to approximate the objective function
-3. **Multi-objective Optimization**: Optimize for multiple objectives (e.g., force and energy dissipation)
-4. **Constraint Handling**: Add constraints on material ordering (e.g., certain materials must be adjacent)
-5. **Sensitivity Analysis**: Analyze how sensitive the optimal solution is to material property variations
+1. **Surrogate Models**: Use machine learning to approximate the objective function
+2. **Multi-objective Optimization**: Optimize for multiple objectives (e.g., force and energy dissipation)
+3. **Constraint Handling**: Add constraints on material ordering (e.g., certain materials must be adjacent)
+4. **Sensitivity Analysis**: Analyze how sensitive the optimal solution is to material property variations
+5. **Distributed Computing**: Scale to multiple machines for even larger optimization runs
 
 ## References
 

@@ -252,9 +252,9 @@ Convert 1D index to column coordinate.
 
 ### File Structure
 
-- `src/exponential-springs.jl`: Exponential spring model implementation
-- `src/lattice_w_anim.jl`: Linear spring model implementation
-- `scripts/run_simulation.jl`: Example usage script
+- `src/lattice_simulation_11x11.jl`: Main 11×11 lattice simulation with backplate, material scaling, and distributed load
+- `Deprecated Scripts/`: Older simulation versions (5×5, 10×10) for reference
+- `scripts/optimization/`: Material ordering optimization scripts
 - `tests/runtests.jl`: Test suite
 
 ## Dependencies
@@ -262,9 +262,9 @@ Convert 1D index to column coordinate.
 ### Required Packages
 
 - `DifferentialEquations`: ODE solving
-- `GLMakie`: Visualization and animation
-- `LinearAlgebra`: Linear algebra operations (standard library)
-- `Printf`: Formatted output (standard library)
+- `GLMakie` / `CairoMakie`: Visualization and animation
+- `Optim`, `Evolutionary`, `Metaheuristics`, `BlackBoxOptim`: Optimization algorithms
+- `LinearAlgebra`, `Printf`, `Statistics`, `Dates`, `DelimitedFiles`: Standard libraries
 
 ### Standard Library
 
@@ -278,21 +278,21 @@ Convert 1D index to column coordinate.
 ```julia
 using Pkg
 Pkg.activate(".")
-include("src/exponential-springs.jl")
+include("src/lattice_simulation_11x11.jl")
 
-# Modify constants as needed
-const FORCE_ANGLE_DEGREES = 45.0
-const F_MAG = 500.0
-
-# Run simulation
-fig, sol, work, energy = run_2d_simulation_with_configurable_force()
+# The simulation runs automatically when the file is included
+# Modify constants in the file as needed before running
 ```
 
-### Saving an Animation
+### Running Material Ordering Optimization
 
 ```julia
-include("src/exponential-springs.jl")
-save_animation_to_file("animations/my_animation.mp4")
+using Pkg
+Pkg.activate(".")
+include("scripts/optimization/compare_optimizers.jl")
+
+# Or use the bash script:
+# ./scripts/optimization/run_overnight.sh 50
 ```
 
 ## Notes

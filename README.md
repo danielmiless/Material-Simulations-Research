@@ -80,7 +80,12 @@ Material-Simulations-Research/
 │   ├── generate_comparison_data.jl        # Generate comparison figures
 │   ├── generate_update_paper_materials.jl # Generate all materials for update papers
 │   ├── generate_distributed_load_figures.jl # Generate figures for distributed load paper
-│   └── parameter_sweep_wall_properties.jl # Parameter sweep analysis
+│   ├── parameter_sweep_wall_properties.jl # Parameter sweep analysis
+│   └── optimization/       # Material ordering optimization scripts
+│       ├── compare_optimizers.jl          # Main comparison script (runs all optimizers)
+│       ├── optimize_*.jl                  # Individual optimizer scripts
+│       ├── run_overnight.sh               # Automated comparison runner
+│       └── README.md                      # Optimization documentation
 ├── Deprecated Scripts/      # Older simulation versions (5×5, 10×10) for reference
 ├── tests/                   # Test suite
 ├── animations/              # Generated animations

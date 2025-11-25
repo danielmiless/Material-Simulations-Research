@@ -4,7 +4,10 @@ description = "Material simulations research: 2D mass-spring lattice systems wit
 version = "0.1.0"
 
 [deps]
+BlackBoxOptim = "a134a8b2-14d6-55f6-9291-3336d3ab0209"
 CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
+Dates = "ade2ca70-3891-5945-98fb-3d9206c17b15"
+DelimitedFiles = "8bb1440f-4735-579b-a4ab-409b98df4dab"
 DifferentialEquations = "0c46a032-eb83-5123-abaf-570d42b7fbaa"
 Evolutionary = "86b6b26d-c046-49b6-aa0b-5f0f74682bd6"
 GLMakie = "e9467ef8-e4e7-5192-8a1a-b1aee30e663a"
@@ -12,6 +15,7 @@ LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 Metaheuristics = "bcdb8e00-2c21-11e9-3065-2b553b22f898"
 Optim = "429524aa-4258-5aef-a3af-852621145aeb"
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
+Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 
 [compat]
 julia = "1.9"

@@ -16,7 +16,6 @@ using DelimitedFiles
 using CairoMakie
 using Dates
 using Statistics
-using Distributed
 using Base.Threads
 
 # Load simulation and utilities

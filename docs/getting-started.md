@@ -43,11 +43,11 @@ using Pkg
 Pkg.instantiate()
 ```
 
-This will install:
+This will install all required packages, including:
 - `DifferentialEquations` - For solving ODEs
-- `GLMakie` - For visualization and animation
-- `LinearAlgebra` - Standard library for linear algebra
-- `Printf` - Standard library for formatted output
+- `GLMakie` / `CairoMakie` - For visualization and animation
+- `Optim`, `Evolutionary`, `Metaheuristics`, `BlackBoxOptim` - For optimization
+- `LinearAlgebra`, `Printf`, `Statistics`, `Dates`, `DelimitedFiles` - Standard libraries
 
 ### 4. Verify Installation
 
@@ -65,30 +65,23 @@ println("Installation successful!")
 
 ### Basic Usage
 
-The main simulation scripts are located in `src/`:
+The main simulation script is located in `src/`:
 
-#### Exponential Springs Model
+#### 11×11 Lattice Simulation
 
 ```bash
-julia --project=. src/exponential-springs.jl
+julia --project=. src/lattice_simulation_11x11.jl
 ```
 
-This runs the exponential spring model with:
+This runs the 11×11 lattice simulation with:
 - Exponential spring force law
 - Damping on nearest-neighbor springs
-- Configurable external force
+- Backplate boundary conditions
+- Column-based material property scaling
+- Distributed load application
 - Real-time animation
 
-#### Linear Springs Model
-
-```bash
-julia --project=. src/lattice_w_anim.jl
-```
-
-This runs the linear (Hooke's law) spring model with:
-- Standard linear springs
-- Diagonal spring connections
-- Animation output
+**Note**: Older simulation versions (5×5 and 10×10 systems) are available in `Deprecated Scripts/` for reference.
 
 ### Configuration
 
@@ -124,7 +117,7 @@ julia --project=.
 Then load modules:
 
 ```julia
-include("src/exponential-springs.jl")
+include("src/lattice_simulation_11x11.jl")
 ```
 
 ### Running Tests
@@ -157,10 +150,25 @@ Animations are automatically saved to `animations/` when running simulations. Th
 **Issue**: Animation window doesn't appear
 - **Solution**: Check that your display server is running (X11 on Linux, or standard macOS display).
 
+### Running Optimization
+
+For material ordering optimization:
+
+```bash
+# Quick test
+./scripts/optimization/run_overnight.sh 5
+
+# Full optimization run
+./scripts/optimization/run_overnight.sh 50
+```
+
+See the [Optimization Documentation](optimization.md) for details.
+
 ### Getting Help
 
 - Check the [API Reference](api-reference.md) for function documentation
 - Review the [Models](models.md) documentation for theoretical background
+- See [Optimization](optimization.md) for optimization usage
 - Contact the research team for assistance
 
 ## Next Steps
@@ -168,4 +176,5 @@ Animations are automatically saved to `animations/` when running simulations. Th
 - Read the [Methodology](methodology.md) to understand the research approach
 - Explore the [Models](models.md) documentation for detailed model descriptions
 - Check the [API Reference](api-reference.md) for code documentation
+- Review [Optimization](optimization.md) for material ordering optimization
 
