@@ -81,8 +81,19 @@ function optimize_material_ordering_metaheuristics(;
     lb = zeros(N)  # Lower bounds
     ub = ones(N)   # Upper bounds
     
-    # Define continuous objective function
+    # Define continuous objective function with hard evaluation limit
+    # Metaheuristics.jl's f_calls_limit might not be strictly enforced,
+    # so we enforce it ourselves in the objective function
+    evaluation_count = Ref(0)
     function continuous_objective(x)
+        # Enforce hard evaluation limit
+        evaluation_count[] += 1
+        if evaluation_count[] > max_evaluations
+            # Return a large penalty value to signal we've exceeded the limit
+            # This should cause the optimizer to stop
+            return 1e10
+        end
+        
         # Convert continuous to permutation
         perm = continuous_to_permutation(x, N)
         return obj_func(perm)
@@ -102,22 +113,41 @@ function optimize_material_ordering_metaheuristics(;
     base_pop_size = min(50, max(10, 4 * N))  # Adaptive population size
     
     # For very low max_evaluations, we need special handling
-    # DE and ECA require at least 4 individuals for proper operation
-    # PSO can work with 2, but DE/ECA need more
-    min_pop_for_algorithm = algorithm in [:DE, :ECA] ? 4 : 2
-    
-    # Ensure population size doesn't exceed max_evaluations
-    # For very low max_evaluations, use a minimal population size
-    # Formula: at least min_pop_for_algorithm, but not more than base_pop_size or max_evaluations
-    pop_size = max(min_pop_for_algorithm, min(base_pop_size, max_evaluations))
+    # DE and ECA require initialization (pop_size) + at least 1 iteration
+    # PSO can work with just pop_size evaluations
+    # Minimum requirements:
+    # - PSO: pop_size (typically 2-4) evaluations
+    # - DE/ECA: pop_size + 1 (need initialization + at least one iteration)
+    # - ES: pop_size (typically 2-4) evaluations
+    if algorithm in [:DE, :ECA]
+        # DE and ECA need pop_size for initialization + at least 1 more for iteration
+        min_pop_size = 4  # Minimum viable population size
+        min_evaluations_needed = min_pop_size + 1  # Need initialization + at least 1 iteration
+    else
+        # PSO and ES can work with just pop_size evaluations
+        min_pop_size = 2
+        min_evaluations_needed = min_pop_size
+    end
     
     # Check if we can actually run this algorithm with the given constraints
-    if max_evaluations < min_pop_for_algorithm
-        error_msg = "Algorithm $algorithm requires at least $min_pop_for_algorithm evaluations (for population initialization), but max_evaluations=$max_evaluations. Increase max_evaluations or use a different algorithm."
+    if max_evaluations < min_evaluations_needed
+        error_msg = "Algorithm $algorithm requires at least $min_evaluations_needed evaluations (minimum population size $min_pop_size + iterations), but max_evaluations=$max_evaluations. Increase max_evaluations to at least $min_evaluations_needed or use a different algorithm."
         if verbose
             println("ERROR: $error_msg")
         end
         throw(ErrorException(error_msg))
+    end
+    
+    # Calculate actual population size
+    # For DE/ECA, we need to leave room for at least 1 iteration after initialization
+    # So pop_size should be at most (max_evaluations - 1) for DE/ECA
+    if algorithm in [:DE, :ECA]
+        # Reserve at least 1 evaluation for iteration, rest for population
+        max_pop_for_evaluations = max(min_pop_size, max_evaluations - 1)
+        pop_size = min(base_pop_size, max_pop_for_evaluations)
+    else
+        # PSO and ES can use all evaluations for population if needed
+        pop_size = max(min_pop_size, min(base_pop_size, max_evaluations))
     end
     
     if base_pop_size > max_evaluations && verbose

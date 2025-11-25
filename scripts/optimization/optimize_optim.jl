@@ -90,6 +90,7 @@ function optimize_material_ordering_optim(;
     start_time = time()
     
     # Try SimulatedAnnealing (if available) or use Nelder-Mead
+    result = nothing
     try
         result = Optim.optimize(
             continuous_objective,
@@ -101,19 +102,30 @@ function optimize_material_ordering_optim(;
                 store_trace = track_history
             )
         )
-    catch
+    catch e
         # Fallback to Nelder-Mead if SimulatedAnnealing not available
-        println("SimulatedAnnealing not available, using Nelder-Mead...")
-        result = Optim.optimize(
-            continuous_objective,
-            initial_x,
-            Optim.NelderMead(),
-            Optim.Options(
-                iterations = max_iterations,
-                show_trace = verbose,
-                store_trace = track_history
+        if verbose
+            println("SimulatedAnnealing not available, using Nelder-Mead...")
+            println("Error: $e")
+        end
+        try
+            result = Optim.optimize(
+                continuous_objective,
+                initial_x,
+                Optim.NelderMead(),
+                Optim.Options(
+                    iterations = max_iterations,
+                    show_trace = verbose,
+                    store_trace = track_history
+                )
             )
-        )
+        catch e2
+            error("Both SimulatedAnnealing and NelderMead failed. SimulatedAnnealing error: $e, NelderMead error: $e2")
+        end
+    end
+    
+    if result === nothing
+        error("Optimization failed: result is nothing")
     end
     
     elapsed_time = time() - start_time

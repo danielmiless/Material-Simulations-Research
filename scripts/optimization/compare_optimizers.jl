@@ -262,9 +262,20 @@ function compare_all_optimizers(;
     
     # Wait for all tasks to complete and collect results
     println("\nWaiting for all optimizers to complete...")
-    for task in tasks
-        name, result = fetch(task)
-        results[name] = result
+    # Use a channel or periodic updates to show progress while waiting
+    for (i, task) in enumerate(tasks)
+        try
+            name, result = fetch(task)
+            results[name] = result
+            # Print a brief update when each task completes
+            if haskey(result, :success) && result.success
+                println("  ✓ $(name) completed")
+            elseif haskey(result, :success) && !result.success
+                println("  ✗ $(name) failed")
+            end
+        catch e
+            println("  ✗ Task $i failed with error: $e")
+        end
     end
     
     # Final summary

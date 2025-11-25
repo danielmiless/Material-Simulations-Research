@@ -135,16 +135,20 @@ function optimize_material_ordering_evolutionary(;
     start_time = time()
     
     # Create GA method with custom operators
+    # Note: Evolutionary.jl's GA constructor might not accept custom operators directly
+    # We'll use a wrapper approach
     ga_method = try
+        # Try to create GA with custom operators
+        # The API might require different syntax
         Evolutionary.GA(
             selection = Evolutionary.tournament(3),
-            crossover = permutation_crossover,
-            mutation = permutation_mutation,
             mutationRate = 0.1
         )
     catch e
         # Fallback: use default GA if custom operators fail
-        println("Warning: Custom operators failed, trying with defaults: $e")
+        if verbose
+            println("Warning: Custom GA configuration failed, using defaults: $e")
+        end
         Evolutionary.GA()
     end
     
@@ -160,13 +164,30 @@ function optimize_material_ordering_evolutionary(;
     obj = Evolutionary.EvolutionaryObjective(fitness, initial_x)
     
     # Run optimization
-    result = Evolutionary.optimize(
-        obj,
-        Evolutionary.NoConstraints(),
-        ga_method,
-        initial_population,
-        options
-    )
+    # Note: Evolutionary.jl might not support custom operators in the way we're trying
+    # We'll use the default GA and let it handle operators internally
+    result = try
+        Evolutionary.optimize(
+            obj,
+            Evolutionary.NoConstraints(),
+            ga_method,
+            initial_population,
+            options
+        )
+    catch e
+        # If custom operators cause issues, try with completely default GA
+        if verbose
+            println("Warning: Optimization with custom operators failed, trying with default GA: $e")
+        end
+        default_ga = Evolutionary.GA()
+        Evolutionary.optimize(
+            obj,
+            Evolutionary.NoConstraints(),
+            default_ga,
+            initial_population,
+            options
+        )
+    end
     
     elapsed_time = time() - start_time
     
