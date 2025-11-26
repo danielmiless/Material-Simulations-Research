@@ -9,7 +9,7 @@ critical metric as it determines injury thresholds and penetration risk.
 """
 
 using Metaheuristics
-using Metaheuristics: boxconstraints  # Explicitly import boxconstraints
+using Metaheuristics: boxconstraints, SlightMutation  # Explicitly import boxconstraints and SlightMutation for GA
 using Printf
 
 # Load simulation and utilities
@@ -173,7 +173,8 @@ function optimize_material_ordering_metaheuristics(;
         result = Metaheuristics.optimize(continuous_objective, bounds, method)
     elseif algorithm == :GA
         # GA (Genetic Algorithm) needs population size N parameter and options
-        method = Metaheuristics.GA(N = pop_size, options = options)
+        # Use SlightMutation for continuous variables (BitFlipMutation is for discrete only)
+        method = Metaheuristics.GA(N = pop_size, mutation = SlightMutation(), options = options)
         result = Metaheuristics.optimize(continuous_objective, bounds, method)
     elseif algorithm == :ES
         # Try CMA_ES which is the Evolution Strategy in Metaheuristics.jl
