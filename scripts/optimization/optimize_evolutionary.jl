@@ -124,7 +124,13 @@ function optimize_material_ordering_evolutionary(;
     )
     
     # Initialize population with random permutations
-    initial_population = [random_permutation(N) for _ in 1:population_size]
+    # Evolutionary.jl may have minimum population size requirements
+    # Ensure population size is at least 11 to avoid BoundsError (some internal indexing may go up to pop_size+1)
+    min_pop_size = max(11, population_size)
+    if population_size < 11 && verbose
+        println("Warning: Population size $population_size may be too small. Using minimum of 11.")
+    end
+    initial_population = [random_permutation(N) for _ in 1:min_pop_size]
     
     # Define fitness function (minimize, so negate for Evolutionary.jl which maximizes)
     function fitness(perm)
@@ -132,6 +138,7 @@ function optimize_material_ordering_evolutionary(;
     end
     
     println("Starting optimization with Genetic Algorithm...")
+    println("Actual population size: $(length(initial_population))")
     start_time = time()
     
     # Create GA method with custom operators
@@ -159,34 +166,61 @@ function optimize_material_ordering_evolutionary(;
         show_trace = verbose
     )
     
+    # Note: Evolutionary.jl is designed for continuous optimization, not discrete permutation problems.
+    # It treats vectors as populations of scalars, not as permutation arrays. This makes it fundamentally
+    # incompatible with our permutation-based optimization problem.
+    # 
+    # We'll attempt to use it, but it will likely fail. The error will be caught and reported gracefully.
+    
     # Create objective from first individual
     initial_x = initial_population[1]
     obj = Evolutionary.EvolutionaryObjective(fitness, initial_x)
     
     # Run optimization
-    # Note: Evolutionary.jl might not support custom operators in the way we're trying
-    # We'll use the default GA and let it handle operators internally
+    # Note: Evolutionary.jl is likely to fail for permutation problems due to API incompatibility
+    default_ga = Evolutionary.GA()
+    
     result = try
+        # Try with custom GA method
         Evolutionary.optimize(
             obj,
             Evolutionary.NoConstraints(),
             ga_method,
-            initial_population,
+            initial_x,
             options
         )
-    catch e
-        # If custom operators cause issues, try with completely default GA
+    catch e1
+        # If that fails, try with default GA
         if verbose
-            println("Warning: Optimization with custom operators failed, trying with default GA: $e")
+            println("Warning: Optimization with custom GA failed, trying with default GA: $e1")
         end
-        default_ga = Evolutionary.GA()
-        Evolutionary.optimize(
-            obj,
-            Evolutionary.NoConstraints(),
-            default_ga,
-            initial_population,
-            options
-        )
+        try
+            Evolutionary.optimize(
+                obj,
+                Evolutionary.NoConstraints(),
+                default_ga,
+                initial_x,
+                options
+            )
+        catch e2
+            # Evolutionary.jl is not suitable for permutation optimization
+            # Provide a clear error message explaining why
+            error_msg = """
+            Evolutionary.jl is not compatible with permutation optimization problems.
+            
+            Reason: Evolutionary.jl is designed for continuous optimization and treats vectors as 
+            populations of scalars, not as permutation arrays. When used with permutation problems,
+            it attempts to pass individual integers to the fitness function instead of permutation vectors.
+            
+            Original error: $e2
+            
+            Recommendation: Use a different optimizer designed for discrete/permutation problems:
+            - Metaheuristics.jl (PSO, DE, ECA) - Works well for permutations
+            - BlackBoxOptim.jl - Handles permutations via continuous encoding
+            - Optim.jl - Can work with permutations via continuous encoding
+            """
+            error(ErrorException(error_msg))
+        end
     end
     
     elapsed_time = time() - start_time

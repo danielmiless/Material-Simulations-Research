@@ -47,12 +47,12 @@ if [ -d "$OUTPUT_DIR" ]; then
         echo "   ✗ No overnight run directories found"
     fi
     
-    # Check for regular comparison output
-    if [ -d "$OUTPUT_DIR/comparison_output" ]; then
-        echo "   ✓ Comparison output directory exists"
-        if [ -f "$OUTPUT_DIR/comparison_output/comparison_results.txt" ]; then
-            echo "   ✓ Results file found"
-        fi
+    # Check for regular comparison output files
+    if [ -f "$OUTPUT_DIR/comparison_results.txt" ]; then
+        echo "   ✓ Comparison results file found"
+    fi
+    if [ -f "$OUTPUT_DIR/optimizer_summary.csv" ]; then
+        echo "   ✓ Optimizer summary CSV found"
     fi
 else
     echo "   ✗ Output directory does not exist yet"

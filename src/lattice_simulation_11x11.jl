@@ -1276,6 +1276,154 @@ end
 
 
 ########################################################################
+#  SAVE ANIMATION WITH MATERIAL ORDERING
+########################################################################
+function save_animation_with_material_ordering(material_order; filename = "lattice_anim_11x11_optimized.mp4", materials=DEFAULT_MATERIALS)
+    """
+    Save the animation to a video file with a specific material ordering.
+    Uses CairoMakie for faster headless rendering.
+    
+    Args:
+        material_order: Array of material indices [1,2,...,N] specifying which material goes in each column
+        filename: Output filename for the animation
+        materials: Array of material property tuples (default: DEFAULT_MATERIALS)
+    """
+    if !HAS_CAIROMAKIE
+        error("CairoMakie is required for saving animations. Install with: using Pkg; Pkg.add(\"CairoMakie\")")
+    end
+    
+    println("Creating animation file: $filename")
+    println("Material ordering: $material_order")
+    
+    # Ensure directory exists
+    dir = dirname(filename)
+    if !isempty(dir) && !isdir(dir)
+        mkpath(dir)
+    end
+    
+    # Validate material_order
+    if length(material_order) != N
+        error("material_order must have length N=$N, got $(length(material_order))")
+    end
+    
+    if !all(1 .<= material_order .<= N)
+        error("material_order must contain indices in range [1, $N]")
+    end
+    
+    # Solve the system with material ordering
+    u0 = zeros(2 * TOTAL_DOF)
+    tspan = (0.0, T_END)
+    p = (material_order=material_order, materials=materials)
+    prob = ODEProblem(lattice_2d_rhs_with_diagonals_and_backplate!, u0, tspan, p)
+    sol = solve(prob, Vern9();
+                reltol = REL_TOL, 
+                abstol = ABS_TOL,
+                saveat = OUTPUT_INTERVAL,
+                dense = false)
+    
+    if sol.retcode != :Success
+        error("Solver failed: $(sol.retcode)")
+    end
+    
+    # Create equilibrium grid, spring connections, and backplate positions
+    equilibrium_grid = create_equilibrium_grid()
+    nearest_neighbor_connections, diagonal_connections = create_spring_connections_with_diagonals()
+    backplate_positions = create_backplate_positions()
+    
+    # Extract position data
+    all_positions = [reshape(view(sol.u[i], 1:TOTAL_DOF), 2, TOTAL_MASSES) for i in 1:length(sol.t)]
+    
+    # Use CairoMakie for faster headless rendering
+    if HAS_CAIROMAKIE
+        CairoMakie.activate!()
+    else
+        error("CairoMakie is required for saving animations")
+    end
+    
+    # Create figure for recording
+    fig = Figure(size = (1400, 900), fontsize = 14)
+    ax = Axis(fig[1, 1], 
+              title = "11×11 Mass-Spring Lattice (Optimized Material Ordering)",
+              xlabel = "X Position",
+              ylabel = "Y Position",
+              aspect = DataAspect())
+    
+    # Set axis limits
+    grid_min = minimum(equilibrium_grid) - 0.5
+    grid_max_x = maximum(backplate_positions[1, :]) + 0.5
+    grid_max_y = maximum(backplate_positions[2, :]) + 0.5
+    limits!(ax, grid_min, grid_max_x, grid_min, grid_max_y)
+    
+    # Precompute force arrows (they're static, based on equilibrium positions)
+    force_arrows = create_distributed_force_arrows(equilibrium_grid)
+    fx_unit, fy_unit = calculate_force_components(1.0, FORCE_ANGLE_DEGREES)
+    
+    # Precompute colors (static, based on column indices)
+    colors = Vector{Symbol}(undef, TOTAL_MASSES)
+    column_colors = [:lightblue, :lightcyan, :cyan, :blue, :mediumblue, :darkblue, :navy, :midnightblue, :darkslateblue, :darkblue, :black]
+    for k in 1:TOTAL_MASSES
+        i, j = lattice_i(k), lattice_j(k)
+        color_idx = min(j, length(column_colors))
+        colors[k] = column_colors[color_idx]
+    end
+    
+    # Precompute backplate line points (static)
+    backplate_line_points = Point2f[backplate_positions[:, i] for i in 1:N]
+    
+    # Record animation with CairoMakie (faster than GLMakie for headless rendering)
+    println("Rendering $(length(sol.t)) frames...")
+    record(fig, filename, 1:length(sol.t); framerate = 30) do frame
+        empty!(ax)
+        
+        current_positions = all_positions[frame] .+ equilibrium_grid
+        
+        # Plot nearest neighbor springs
+        for (k1, k2) in nearest_neighbor_connections
+            spring_points = Point2f[current_positions[:, k1], current_positions[:, k2]]
+            lines!(ax, spring_points, color = :blue, linewidth = SPRING_WIDTH)
+        end
+        
+        # Plot diagonal springs
+        for (k1, k2) in diagonal_connections
+            spring_points = Point2f[current_positions[:, k1], current_positions[:, k2]]
+            lines!(ax, spring_points, color = :red, linewidth = DIAGONAL_SPRING_WIDTH)
+        end
+        
+        # Plot backplate as a vertical line (wall, no springs)
+        lines!(ax, backplate_line_points, color = :gray, linewidth = 8)
+        
+        # Plot masses with column-based color coding
+        mass_points = Point2f[current_positions[:, k] for k in 1:TOTAL_MASSES]
+        scatter!(ax, mass_points, markersize = NODE_SIZE, color = colors, strokewidth = 2, strokecolor = :white)
+        
+        # Add distributed force arrows if active (use precomputed arrows)
+        if sol.t[frame] <= F_ACTIVE_TIME
+            for i in 1:N
+                if length(force_arrows) >= 2*i
+                    arrow_points = [force_arrows[2*i-1], force_arrows[2*i]]
+                    lines!(ax, arrow_points, color = :green, linewidth = 3)
+                    scatter!(ax, [force_arrows[2*i]], markersize = 8, color = :green, marker = :circle)
+                end
+            end
+        end
+        
+        # Add title with current configuration and material ordering info
+        ax.title = "Optimized Material Order: $material_order - Time: $(round(sol.t[frame], digits=3))s"
+        
+        # Progress indicator every 100 frames
+        if frame % 100 == 0
+            println("  Frame $frame / $(length(sol.t)) ($(round(100*frame/length(sol.t), digits=1))%)")
+        end
+    end
+    
+    # Switch back to GLMakie for interactive use
+    GLMakie.activate!()
+    
+    println("Animation saved to: $filename")
+end
+
+
+########################################################################
 #  RUN SIMULATION
 ########################################################################
 # Run the interactive simulation (only if this file is run directly, not when included)

@@ -40,7 +40,7 @@ function optimize_material_ordering_metaheuristics(;
     max_evaluations=MAX_EVALUATIONS,
     verbose=VERBOSE,
     track_history=TRACK_HISTORY,
-    algorithm=:PSO  # Options: :PSO, :DE, :ECA, :ES
+    algorithm=:PSO  # Options: :PSO, :DE, :ECA, :ES, :GA
 )
     """
     Optimize material ordering using Metaheuristics.jl.
@@ -50,7 +50,7 @@ function optimize_material_ordering_metaheuristics(;
         max_evaluations: Maximum number of function evaluations
         verbose: If true, print progress
         track_history: If true, track evaluation history
-        algorithm: Algorithm to use (:PSO, :DE, :ECA, :ES)
+        algorithm: Algorithm to use (:PSO, :DE, :ECA, :ES, :GA)
     
     Returns:
         Tuple (best_permutation, best_force, state, result)
@@ -114,17 +114,18 @@ function optimize_material_ordering_metaheuristics(;
     
     # For very low max_evaluations, we need special handling
     # DE and ECA require initialization (pop_size) + at least 1 iteration
-    # PSO can work with just pop_size evaluations
+    # PSO, ES, and GA can work with just pop_size evaluations
     # Minimum requirements:
     # - PSO: pop_size (typically 2-4) evaluations
     # - DE/ECA: pop_size + 1 (need initialization + at least one iteration)
     # - ES: pop_size (typically 2-4) evaluations
+    # - GA: pop_size (typically 2-4) evaluations
     if algorithm in [:DE, :ECA]
         # DE and ECA need pop_size for initialization + at least 1 more for iteration
         min_pop_size = 4  # Minimum viable population size
         min_evaluations_needed = min_pop_size + 1  # Need initialization + at least 1 iteration
     else
-        # PSO and ES can work with just pop_size evaluations
+        # PSO, ES, and GA can work with just pop_size evaluations
         min_pop_size = 2
         min_evaluations_needed = min_pop_size
     end
@@ -146,7 +147,7 @@ function optimize_material_ordering_metaheuristics(;
         max_pop_for_evaluations = max(min_pop_size, max_evaluations - 1)
         pop_size = min(base_pop_size, max_pop_for_evaluations)
     else
-        # PSO and ES can use all evaluations for population if needed
+        # PSO, ES, and GA can use all evaluations for population if needed
         pop_size = max(min_pop_size, min(base_pop_size, max_evaluations))
     end
     
@@ -170,17 +171,34 @@ function optimize_material_ordering_metaheuristics(;
         # ECA needs population size N parameter and options
         method = Metaheuristics.ECA(N = pop_size, options = options)
         result = Metaheuristics.optimize(continuous_objective, bounds, method)
+    elseif algorithm == :GA
+        # GA (Genetic Algorithm) needs population size N parameter and options
+        method = Metaheuristics.GA(N = pop_size, options = options)
+        result = Metaheuristics.optimize(continuous_objective, bounds, method)
     elseif algorithm == :ES
         # Try CMA_ES which is the Evolution Strategy in Metaheuristics.jl
-        # Check if CMA_ES is available
-        if isdefined(Metaheuristics, :CMA_ES)
+        # Check if CMA_ES is available - try multiple ways to detect it
+        cma_es_available = false
+        try
+            # Try to access CMA_ES - this will work if it's available
+            if isdefined(Metaheuristics, :CMA_ES)
+                # Try to instantiate it to make sure it actually works
+                test_method = Metaheuristics.CMA_ES(N = 2, options = options)
+                cma_es_available = true
+            end
+        catch
+            # CMA_ES is not available or doesn't work
+            cma_es_available = false
+        end
+        
+        if cma_es_available
             method = Metaheuristics.CMA_ES(N = pop_size, options = options)
             result = Metaheuristics.optimize(continuous_objective, bounds, method)
         else
-            error("ES/CMA_ES algorithm not available in this version of Metaheuristics.jl. Use :PSO, :DE, or :ECA instead.")
+            error("ES/CMA_ES algorithm not available in this version of Metaheuristics.jl. Use :PSO, :DE, :ECA, or :GA instead.")
         end
     else
-        error("Unknown algorithm: $algorithm. Use :PSO, :DE, :ECA, or :ES")
+        error("Unknown algorithm: $algorithm. Use :PSO, :DE, :ECA, :ES, or :GA")
     end
     
     elapsed_time = time() - start_time
@@ -210,7 +228,7 @@ end
 ########################################################################
 if abspath(PROGRAM_FILE) == @__FILE__
     # Test multiple algorithms (ES/CMA_ES might not be available)
-    algorithms = [:PSO, :DE, :ECA, :ES]
+    algorithms = [:PSO, :DE, :ECA, :GA, :ES]
     results = Dict()
     
     for alg in algorithms

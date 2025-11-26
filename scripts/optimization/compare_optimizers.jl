@@ -25,7 +25,8 @@ include(joinpath(@__DIR__, "optimization_utils.jl"))
 # Load optimizer scripts
 include(joinpath(@__DIR__, "optimize_blackbox.jl"))
 include(joinpath(@__DIR__, "optimize_optim.jl"))
-include(joinpath(@__DIR__, "optimize_evolutionary.jl"))
+# Note: Evolutionary.jl excluded - incompatible with permutation problems
+# include(joinpath(@__DIR__, "optimize_evolutionary.jl"))
 include(joinpath(@__DIR__, "optimize_metaheuristics.jl"))
 
 
@@ -65,6 +66,28 @@ end
 
 
 ########################################################################
+#  CHECK ALGORITHM AVAILABILITY
+########################################################################
+function check_cma_es_available()
+    """
+    Check if CMA_ES is available in Metaheuristics.jl.
+    Returns true if available, false otherwise.
+    
+    Note: This function should be called after optimize_metaheuristics.jl is included,
+    which loads Metaheuristics.jl.
+    """
+    try
+        # Metaheuristics should already be loaded via optimize_metaheuristics.jl
+        # Check if CMA_ES is defined in the module
+        return isdefined(Metaheuristics, :CMA_ES)
+    catch
+        # Any error means CMA_ES is not available
+        return false
+    end
+end
+
+
+########################################################################
 #  MAIN COMPARISON FUNCTION
 ########################################################################
 function compare_all_optimizers(;
@@ -99,7 +122,25 @@ function compare_all_optimizers(;
     
     results = Dict()
     overall_start_time = time()
-    total_optimizers = 1 + 2 + 4  # BlackBoxOptim + Optim + Evolutionary + 4 Metaheuristics
+    
+    # Determine available Metaheuristics algorithms
+    # GA (Genetic Algorithm) is added to replace Evolutionary.jl
+    metaheuristics_algorithms = [:PSO, :DE, :ECA, :GA]
+    if check_cma_es_available()
+        push!(metaheuristics_algorithms, :ES)
+        if verbose
+            println("CMA_ES (ES) is available - will be included in comparison")
+        end
+    else
+        if verbose
+            println("CMA_ES (ES) is not available in this Metaheuristics.jl version - skipping")
+        end
+    end
+    
+    # Note: Evolutionary.jl is excluded because it's designed for continuous optimization
+    # and is incompatible with permutation problems (treats vectors as populations of scalars)
+    # Replaced with Metaheuristics.jl's GA (Genetic Algorithm) which works with continuous encoding
+    total_optimizers = 1 + 1 + length(metaheuristics_algorithms)  # BlackBoxOptim + Optim + Metaheuristics (including GA)
     
     println("Running all optimizers in parallel for faster execution...")
     println("  All optimizers will run concurrently")
@@ -197,30 +238,11 @@ function compare_all_optimizers(;
         end
     end)
     
-    # Task 3: Evolutionary.jl
-    push!(tasks, @async begin
-        opt_start = time()
-        update_progress("Evolutionary.jl", "Starting...", nothing, false, true)
-        try
-            best_perm, best_f, state, opt_result = optimize_material_ordering_evolutionary(
-                materials=materials,
-                max_generations=div(max_evaluations, 2),
-                population_size=10,
-                verbose=false,
-                track_history=track_history
-            )
-            opt_elapsed = time() - opt_start
-            update_progress("Evolutionary.jl", "✓ Completed", opt_elapsed, true, false)
-            return (:Evolutionary, (permutation=best_perm, force=best_f, state=state, result=opt_result, success=true))
-        catch e
-            opt_elapsed = time() - opt_start
-            update_progress("Evolutionary.jl", "✗ Failed", opt_elapsed, true, false)
-            return (:Evolutionary, (success=false, error=e))
-        end
-    end)
+    # Note: Evolutionary.jl is excluded because it's designed for continuous optimization
+    # and is fundamentally incompatible with permutation problems. It treats vectors as
+    # populations of scalars rather than permutation arrays, causing MethodErrors.
     
-    # Tasks 4-7: Metaheuristics algorithms
-    metaheuristics_algorithms = [:PSO, :DE, :ECA, :ES]
+    # Tasks 3-N: Metaheuristics algorithms (already determined above)
     for alg in metaheuristics_algorithms
         push!(tasks, @async begin
             alg_name = "Metaheuristics_$alg"
@@ -374,10 +396,10 @@ function generate_convergence_plot(results, output_dir)
     colors = Dict(
         :BlackBoxOptim => :blue,
         :Optim => :red,
-        :Evolutionary => :green,
         :Metaheuristics_PSO => :orange,
         :Metaheuristics_DE => :purple,
         :Metaheuristics_ECA => :brown,
+        :Metaheuristics_GA => :green,
         :Metaheuristics_ES => :pink
     )
     
@@ -590,6 +612,60 @@ if should_run
     println("\nExporting CSV data...")
     export_csv_data(results, output_dir)
     
+    # Generate animation for best optimized configuration
+    println("\n" * "="^80)
+    println("Generating animation for best optimized configuration...")
+    println("="^80)
+    
+    # Find best overall configuration
+    successful_results = [(name, res) for (name, res) in results if res.success]
+    animation_generated = false
+    
+    if !isempty(successful_results)
+        best_idx = argmin([res.force for (_, res) in successful_results])
+        best_name, best_res = successful_results[best_idx]
+        
+        println("Best configuration found:")
+        println("  Optimizer: $best_name")
+        println("  Peak Force: $(best_res.force) N")
+        println("  Material Ordering: $(best_res.permutation)")
+        println()
+        
+        # Generate animation filename
+        anim_filename = joinpath(output_dir, "best_optimized_configuration.mp4")
+        
+        try
+            println("Running simulation with best material ordering...")
+            println("  This may take several minutes...")
+            flush(stdout)  # Ensure output is visible
+            
+            save_animation_with_material_ordering(
+                best_res.permutation,
+                filename=anim_filename,
+                materials=DEFAULT_MATERIALS
+            )
+            println("✓ Animation saved to: $anim_filename")
+            animation_generated = true
+        catch e
+            println("⚠ Animation generation failed (this is non-critical)")
+            println("  Error type: $(typeof(e))")
+            println("  Error message: $e")
+            # Print a brief stacktrace
+            try
+                bt = catch_backtrace()
+                st = stacktrace(bt)
+                println("  Stacktrace (first 3 lines):")
+                for i in 1:min(3, length(st))
+                    println("    $(st[i])")
+                end
+            catch
+                # If stacktrace fails, just continue
+            end
+        end
+    else
+        println("⚠ No successful optimizations found - skipping animation generation")
+    end
+    
     println("\n" * "="^80)
     println("Comparison complete!")
     println("="^80)
@@ -598,5 +674,8 @@ if should_run
     println("  - Convergence plot: optimizer_convergence_comparison.png")
     println("  - LaTeX table: optimizer_comparison_table.tex")
     println("  - CSV data: optimizer_summary.csv + convergence_*.csv")
+    if animation_generated
+        println("  - Best configuration animation: best_optimized_configuration.mp4")
+    end
 end
 

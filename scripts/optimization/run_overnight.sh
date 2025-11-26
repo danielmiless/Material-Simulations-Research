@@ -68,6 +68,7 @@ if [ -f "$OUTPUT_DIR/comparison_results.txt" ]; then
     cp "$OUTPUT_DIR"/optimizer_comparison_table.tex "$RUN_DIR/" 2>/dev/null || true
     cp "$OUTPUT_DIR"/optimizer_convergence_comparison.png "$RUN_DIR/" 2>/dev/null || true
     cp "$OUTPUT_DIR"/convergence_*.csv "$RUN_DIR/" 2>/dev/null || true
+    cp "$OUTPUT_DIR"/best_optimized_configuration.mp4 "$RUN_DIR/" 2>/dev/null || true
 fi
 
 # Final summary
