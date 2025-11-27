@@ -1,0 +1,6 @@
+# Baseline Sequential Material Ordering Result
+# Date: 2025-11-27T12:34:16.951
+
+Material Ordering: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+Peak Backplate Force (N): 1747.779979851872
+Simulation Time (s): 38.65147519111633

@@ -433,6 +433,71 @@ end
 
 
 ########################################################################
+#  GENERATE BEST-SO-FAR CONVERGENCE PLOT
+########################################################################
+function generate_best_so_far_plot(results, output_dir)
+    """
+    Generate convergence plots showing best-so-far force vs evaluations for all optimizers.
+    This shows monotonically improving (or non-worsening) convergence curves.
+    """
+    fig = Figure(size = (1200, 800), fontsize = 14)
+    ax = Axis(fig[1, 1],
+              title = "Optimizer Convergence Comparison: Best-So-Far Peak Force vs Evaluations",
+              xlabel = "Function Evaluations",
+              ylabel = "Best-So-Far Peak Force (N)",
+              xscale = log10)
+    
+    # Color palette for different optimizers
+    colors = Dict(
+        :BlackBoxOptim => :blue,
+        :Optim => :red,
+        :Metaheuristics_PSO => :orange,
+        :Metaheuristics_DE => :purple,
+        :Metaheuristics_ECA => :brown,
+        :Metaheuristics_GA => :green,
+        :Metaheuristics_ES => :pink
+    )
+    
+    # Plot best-so-far convergence history for each successful optimizer
+    for (name, res) in results
+        if res.success && !isempty(res.state.force_history)
+            color = get(colors, name, :black)
+            evaluations = 1:length(res.state.force_history)
+            
+            # Compute best-so-far history (monotonically improving for minimization)
+            best_so_far = Vector{Float64}()
+            current_best = Inf
+            for force in res.state.force_history
+                if force < current_best
+                    current_best = force
+                end
+                push!(best_so_far, current_best)
+            end
+            
+            lines!(ax, evaluations, best_so_far,
+                   color = color, linewidth = 2, label = string(name))
+            # Add marker at final best point
+            scatter!(ax, [evaluations[end]], [best_so_far[end]],
+                    color = color, markersize = 10, marker = :circle)
+        end
+    end
+    
+    axislegend(ax, position = :rt)
+    
+    # Save figure
+    output_path = joinpath(output_dir, "optimizer_best_so_far_convergence.png")
+    try
+        save(output_path, fig)
+        @printf("Best-so-far convergence plot saved to %s\n", output_path)
+    catch e
+        @warn "Failed to save best-so-far convergence plot: $e"
+    end
+    
+    return fig
+end
+
+
+########################################################################
 #  GENERATE LATEX TABLE
 ########################################################################
 function generate_latex_table(results, filename)
@@ -599,9 +664,13 @@ if should_run
     result_file = joinpath(output_dir, "comparison_results.txt")
     save_comparison_results(results, result_file)
     
-    # Generate convergence plot
+    # Generate convergence plot (raw evaluation values)
     println("\nGenerating convergence plot...")
     generate_convergence_plot(results, output_dir)
+    
+    # Generate best-so-far convergence plot
+    println("\nGenerating best-so-far convergence plot...")
+    generate_best_so_far_plot(results, output_dir)
     
     # Generate LaTeX table
     println("\nGenerating LaTeX table...")
@@ -671,7 +740,8 @@ if should_run
     println("="^80)
     println("All outputs saved to: $output_dir")
     println("  - Text summary: comparison_results.txt")
-    println("  - Convergence plot: optimizer_convergence_comparison.png")
+    println("  - Convergence plot (raw values): optimizer_convergence_comparison.png")
+    println("  - Best-so-far convergence plot: optimizer_best_so_far_convergence.png")
     println("  - LaTeX table: optimizer_comparison_table.tex")
     println("  - CSV data: optimizer_summary.csv + convergence_*.csv")
     if animation_generated
