@@ -46,7 +46,7 @@ morestring=[m]{'}{'},%
 \maketitle
 
 \begin{abstract}
-\noindent This update presents a comprehensive comparison of six optimization algorithms for minimizing peak force transfer in an 11×11 mass-spring lattice system through material ordering optimization. The problem involves finding the optimal arrangement of 11 distinct materials across lattice columns to minimize peak backplate force, motivated by armor applications where peak force determines injury thresholds. We implemented and compared algorithms from three Julia~\cite{ref:bezanson2017} optimization packages: Metaheuristics.jl~\cite{ref:metaheuristics} (Differential Evolution~\cite{ref:storn1997}, Particle Swarm Optimization~\cite{ref:kennedy1995}, Evolutionary Centers Algorithm, Genetic Algorithm~\cite{ref:goldberg1989}), BlackBoxOptim.jl~\cite{ref:blackboxoptim} (Adaptive Differential Evolution), and Optim.jl~\cite{ref:optim} (Simulated Annealing~\cite{ref:kirkpatrick1983}). All algorithms were evaluated with 100-102 function evaluations, where each evaluation requires a full 8-second simulation of a 242-degree-of-freedom system. Results show that BlackBoxOptim achieved the best solution (1497.89 N), representing a 48.6\% reduction compared to the worst performer. Metaheuristics\_PSO provided the best balance between solution quality and computation time. The study reveals that optimal material orderings consistently place the stiffest material near the impact side, with softer materials distributed in later columns, suggesting that material interaction and wave propagation effects create complex dependencies that require optimization rather than simple heuristics.
+\noindent This update presents a comprehensive comparison of six optimization algorithms for minimizing peak force transfer in an 11×11 mass-spring lattice system through material ordering optimization. The problem involves finding the optimal arrangement of 11 distinct materials across lattice columns to minimize peak backplate force, motivated by armor applications where peak force determines injury thresholds. We implemented and compared algorithms from three Julia optimization packages: Metaheuristics.jl (Differential Evolution, Particle Swarm Optimization, Evolutionary Centers Algorithm, Genetic Algorithm), BlackBoxOptim.jl (Adaptive Differential Evolution), and Optim.jl (Simulated Annealing). All algorithms were evaluated with 100-102 function evaluations, where each evaluation requires a full 8-second simulation of a 242-degree-of-freedom system. Results show that BlackBoxOptim achieved the best solution (1497.89 N), representing a 48.6\% reduction compared to the worst performer. Metaheuristics\_PSO provided the best balance between solution quality and computation time. The study reveals that optimal material orderings consistently place the stiffest material near the impact side, with softer materials distributed in later columns, suggesting that material interaction and wave propagation effects create complex dependencies that require optimization rather than simple heuristics.
 \end{abstract}
 
 \section{Introduction}
@@ -62,7 +62,7 @@ The 11×11 lattice system consists of 121 masses connected by springs, with an i
 \noindent Previous work established the foundation with exponential spring models, viscous damping, and backplate constraints. The current work extends this by:
 \begin{enumerate}
     \item Formulating the material ordering as a permutation optimization problem
-    \item Implementing multiple optimization algorithms from different Julia~\cite{ref:bezanson2017} packages
+    \item Implementing multiple optimization algorithms from different Julia packages
     \item Conducting a comprehensive comparison of optimizer performance
     \item Analyzing convergence behavior and computational efficiency
 \end{enumerate}
@@ -153,13 +153,13 @@ We implemented and compared six optimization algorithms from three Julia optimiz
 
 \subsection{Metaheuristics.jl Algorithms}
 
-\textbf{Differential Evolution (DE)}~\cite{ref:storn1997}: A population-based evolutionary algorithm that generates new solutions by combining existing population members using difference vectors. The algorithm creates offspring by adding a scaled difference between two randomly selected members to a third member, then applies crossover to produce new candidates. This mutation strategy enables effective exploration of the search space, and DE is well-suited for continuous optimization problems when combined with appropriate encoding schemes. \newline
+\textbf{Differential Evolution (DE)}: A population-based evolutionary algorithm that generates new solutions by combining existing population members using difference vectors. The algorithm creates offspring by adding a scaled difference between two randomly selected members to a third member, then applies crossover to produce new candidates. This mutation strategy enables effective exploration of the search space, and DE is well-suited for continuous optimization problems when combined with appropriate encoding schemes. \newline
 
-\noindent \textbf{Particle Swarm Optimization (PSO)}~\cite{ref:kennedy1995}: A swarm intelligence algorithm where each particle represents a candidate solution and moves through the search space with a velocity influenced by both its personal best position and the global best position of the swarm. The velocity update balances three components: inertia, attraction to personal best, and attraction to global best. PSO efficiently explores large search spaces through collective swarm behavior and typically converges quickly to promising regions. \newline
+\noindent \textbf{Particle Swarm Optimization (PSO)}: A swarm intelligence algorithm where each particle represents a candidate solution and moves through the search space with a velocity influenced by both its personal best position and the global best position of the swarm. The velocity update balances three components: inertia, attraction to personal best, and attraction to global best. PSO efficiently explores large search spaces through collective swarm behavior and typically converges quickly to promising regions. \newline
 
 \noindent \textbf{Evolutionary Centers Algorithm (ECA)}: A population-based algorithm that maintains evolutionary centers representing promising regions of the search space. The algorithm uses these centers to guide solution generation, balancing exploration of new regions with exploitation near promising areas. ECA adapts the number and location of centers during optimization, making it effective for multimodal problems where multiple good solutions may exist. \newline
 
-\noindent \textbf{Genetic Algorithm (GA)}~\cite{ref:goldberg1989}: A classic evolutionary algorithm that evolves a population of solutions over generations using selection, crossover, and mutation operators. Tournament selection chooses parents, crossover combines their features to create offspring, and mutation introduces random variations to maintain diversity. GA is well-established and robust across many optimization domains, though performance depends on the balance between exploration and exploitation controlled by crossover and mutation rates. \newline
+\noindent \textbf{Genetic Algorithm (GA)}: A classic evolutionary algorithm that evolves a population of solutions over generations using selection, crossover, and mutation operators. Tournament selection chooses parents, crossover combines their features to create offspring, and mutation introduces random variations to maintain diversity. GA is well-established and robust across many optimization domains, though performance depends on the balance between exploration and exploitation controlled by crossover and mutation rates. \newline
 
 \subsection{BlackBoxOptim.jl}
 
@@ -167,7 +167,7 @@ We implemented and compared six optimization algorithms from three Julia optimiz
 
 \subsection{Optim.jl}
 
-\textbf{Simulated Annealing}~\cite{ref:kirkpatrick1983}: A probabilistic algorithm that explores the search space by accepting both improving and non-improving moves with decreasing probability over time. The algorithm uses a temperature parameter that controls the acceptance probability: at high temperature, many worse solutions are accepted (broad exploration), while at low temperature, the algorithm becomes more selective (local exploitation). This allows escape from local minima but requires careful tuning of the cooling schedule, especially for large search spaces like permutation problems.
+\textbf{Simulated Annealing}: A probabilistic algorithm that explores the search space by accepting both improving and non-improving moves with decreasing probability over time. The algorithm uses a temperature parameter that controls the acceptance probability: at high temperature, many worse solutions are accepted (broad exploration), while at low temperature, the algorithm becomes more selective (local exploitation). This allows escape from local minima but requires careful tuning of the cooling schedule, especially for large search spaces like permutation problems.
 
 \section{Implementation Details}
 
@@ -206,13 +206,13 @@ To ensure reproducibility, the following configuration details are provided:
         \item BlackBoxOptim: Adaptive DE/rand/1/bin strategy with automatic parameter adaptation
         \item Optim.jl: Simulated Annealing with default cooling schedule
     \end{itemize}
-    \item \textbf{Software versions}: Julia~\cite{ref:bezanson2017} optimization packages used include Metaheuristics.jl~\cite{ref:metaheuristics}, BlackBoxOptim.jl~\cite{ref:blackboxoptim}, and Optim.jl~\cite{ref:optim} (specific versions not recorded, but code is compatible with recent stable releases)
+    \item \textbf{Software versions}: Julia optimization packages used include Metaheuristics.jl, BlackBoxOptim.jl, and Optim.jl (specific versions not recorded, but code is compatible with recent stable releases)
     \item \textbf{Simulation parameters}: Fixed simulation parameters as defined in the lattice simulation code (see Table~\ref{tab:material_properties} for material properties)
 \end{itemize}
 
 \subsection{Parallel Execution}
 
-All optimizers run in parallel using Julia's~\cite{ref:bezanson2017} \texttt{@async} tasks, providing approximately 5-7× speedup compared to sequential execution. The total optimization time is approximately the time of the slowest optimizer, not the sum of all optimizers.
+All optimizers run in parallel using Julia's \texttt{@async} tasks, providing approximately 5-7× speedup compared to sequential execution. The total optimization time is approximately the time of the slowest optimizer, not the sum of all optimizers.
 
 \section{Results}
 
@@ -429,7 +429,7 @@ The optimal material orderings reveal interesting physical insights that can be 
 The optimization runs were conducted on a system with the following characteristics:
 \begin{itemize}
     \item \textbf{Processor}: Apple M1 chip
-    \item \textbf{Parallel execution}: All optimizers ran in parallel using Julia's~\cite{ref:bezanson2017} task-based parallelism
+    \item \textbf{Parallel execution}: All optimizers ran in parallel using Julia's task-based parallelism
     \item \textbf{Total wall-clock time}: Approximately 7.4 hours (determined by the slowest optimizer: BlackBoxOptim)
     \item \textbf{Total function evaluations}: 603 evaluations across all optimizers
 \end{itemize}
