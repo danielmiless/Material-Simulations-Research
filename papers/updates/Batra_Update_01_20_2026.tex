@@ -37,9 +37,9 @@ morestring=[s]{"}{"},%
 morestring=[m]{'}{'},%
 }[keywords,comments,strings]%
 
-\title{Research Update: Material Ordering Optimization for Peak Force Minimization}
+\title{Optimization of Material Ordering for Peak Force Minimization in Mass-Spring Lattice Systems}
 \author{Daniel Miles\\Research Advisor: Dr. Romesh Batra}
-\date{January 20, 2026}
+\date{January 27, 2026}
 
 \begin{document}
 
@@ -51,7 +51,7 @@ morestring=[m]{'}{'},%
 
 \section{Introduction}
 
-Mass-spring lattice systems serve as fundamental models for understanding wave propagation, energy dissipation, and dynamic response in complex material structures. These systems find applications across numerous engineering domains, including impact mitigation, seismic wave analysis, and protective system design. In particular, armor systems such as Kevlar vests and composite protective panels rely on the strategic arrangement of materials with varying mechanical properties to minimize force transfer and prevent injury or penetration. \newline
+\noindent Mass-spring lattice systems serve as fundamental models for understanding wave propagation, energy dissipation, and dynamic response in complex material structures. These systems find applications across numerous engineering domains, including impact mitigation, seismic wave analysis, and protective system design. In particular, armor systems such as Kevlar vests and composite protective panels rely on the strategic arrangement of materials with varying mechanical properties to minimize force transfer and prevent injury or penetration. \newline
 
 \noindent This work presents a comprehensive study of a two-dimensional mass-spring lattice system designed to model impact scenarios relevant to protective applications. The system employs exponential spring models to capture non-linear material behavior, viscous damping to account for energy dissipation, and boundary constraints to represent realistic loading conditions. Through detailed mathematical formulation, numerical analysis, and optimization, we investigate how material ordering affects force transfer characteristics in heterogeneous lattice structures. \newline
 
@@ -83,11 +83,11 @@ Mass-spring systems have been extensively studied in classical mechanics, materi
 \section{Problem Formulation}
 \label{sec:problem_formulation}
 
-This section develops the mathematical formulation of the mass-spring lattice system, beginning with simple two-mass systems and progressively building complexity to the full 11×11 lattice. We start with fundamental spring-mass systems to establish the theoretical foundation, then extend to lattice structures with multiple masses, non-linear springs, damping, and boundary constraints.
+\noindent This section develops the mathematical formulation of the mass-spring lattice system, beginning with simple two-mass systems and progressively building complexity to the full 11×11 lattice. We start with fundamental spring-mass systems to establish the theoretical foundation, then extend to lattice structures with multiple masses, non-linear springs, damping, and boundary constraints.
 
 \subsection{Simple Two-Mass Spring Systems}
 
-To establish the theoretical foundation, we first consider simple two-mass systems connected by springs. These systems illustrate the fundamental principles that extend to larger lattices.
+\noindent To establish the theoretical foundation, we first consider simple two-mass systems connected by springs. These systems illustrate the fundamental principles that extend to larger lattices.
 
 \begin{figure}[h]
 \centering
@@ -98,35 +98,35 @@ To establish the theoretical foundation, we first consider simple two-mass syste
 
 \subsubsection{Linear Spring System}
 
-Consider two point masses $m_1$ and $m_2$ connected by a linear spring with spring constant $k$ in two dimensions. The masses have positions $\mathbf{x}_1 = [x_1, y_1]^T$ and $\mathbf{x}_2 = [x_2, y_2]^T$, and velocities $\mathbf{v}_1 = [v_{x1}, v_{y1}]^T$ and $\mathbf{v}_2 = [v_{x2}, v_{y2}]^T$.
+\noindent Consider two point masses $m_1$ and $m_2$ connected by a linear spring with spring constant $k$ in two dimensions. The masses have positions $\mathbf{x}_1 = [x_1, y_1]^T$ and $\mathbf{x}_2 = [x_2, y_2]^T$, and velocities $\mathbf{v}_1 = [v_{x1}, v_{y1}]^T$ and $\mathbf{v}_2 = [v_{x2}, v_{y2}]^T$. \newline
 
-\textbf{Assumptions:}
+\noindent \textbf{Assumptions:}
 \begin{itemize}
     \item Masses are point particles with no rotational inertia
     \item Spring is massless and follows Hooke's law
     \item No external forces except those explicitly applied
-    \item Two-dimensional motion (masses constrained to a plane)
+    \item Two-dimensional motion (masses constrained to a plane) \newline
 \end{itemize}
 
-\textbf{Free-Body Diagrams:}
+\noindent \textbf{Free-Body Diagrams:}
 
-For mass 1, the forces include:
+\noindent For mass 1, the forces include:
 \begin{itemize}
     \item Spring force from mass 2: $\mathbf{F}_{12} = -k(\mathbf{x}_1 - \mathbf{x}_2)$
     \item External force (if applied): $\mathbf{F}_{ext,1}$
 \end{itemize}
 
-For mass 2, the forces include:
+\noindent For mass 2, the forces include:
 \begin{itemize}
     \item Spring force from mass 1: $\mathbf{F}_{21} = -k(\mathbf{x}_2 - \mathbf{x}_1) = k(\mathbf{x}_1 - \mathbf{x}_2)$
     \item External force (if applied): $\mathbf{F}_{ext,2}$
 \end{itemize}
 
-Note that $\mathbf{F}_{21} = -\mathbf{F}_{12}$, satisfying Newton's third law.
+\noindent Note that $\mathbf{F}_{21} = -\mathbf{F}_{12}$, satisfying Newton's third law. \newline
 
-\textbf{Equations of Motion:}
+\noindent \textbf{Equations of Motion:}
 
-Applying Newton's second law to each mass:
+\noindent Applying Newton's second law to each mass:
 
 \begin{align}
 m_1 \frac{d\mathbf{v}_1}{dt} &= -k(\mathbf{x}_1 - \mathbf{x}_2) + \mathbf{F}_{ext,1} \label{eq:linear_mass1} \\
@@ -135,7 +135,7 @@ m_2 \frac{d\mathbf{v}_2}{dt} &= k(\mathbf{x}_1 - \mathbf{x}_2) + \mathbf{F}_{ext
 \frac{d\mathbf{x}_2}{dt} &= \mathbf{v}_2 \label{eq:kinematics2}
 \end{align}
 
-In component form, for mass 1:
+\noindent In component form, for mass 1:
 \begin{align}
 m_1 \frac{dv_{x1}}{dt} &= -k(x_1 - x_2) + F_{ext,1,x} \\
 m_1 \frac{dv_{y1}}{dt} &= -k(y_1 - y_2) + F_{ext,1,y} \\
@@ -143,93 +143,93 @@ m_1 \frac{dv_{y1}}{dt} &= -k(y_1 - y_2) + F_{ext,1,y} \\
 \frac{dy_1}{dt} &= v_{y1}
 \end{align}
 
-And similarly for mass 2.
+\noindent And similarly for mass 2. \newline
 
-\textbf{Initial Conditions:}
+\noindent \textbf{Initial Conditions:}
 
-The system requires initial positions and velocities:
+\noindent The system requires initial positions and velocities:
 \begin{align}
 \mathbf{x}_1(0) &= \mathbf{x}_{1,0}, \quad \mathbf{x}_2(0) = \mathbf{x}_{2,0} \\
 \mathbf{v}_1(0) &= \mathbf{v}_{1,0}, \quad \mathbf{v}_2(0) = \mathbf{v}_{2,0}
 \end{align}
 
-For a system starting at rest with masses at equilibrium separation $d$:
+\noindent For a system starting at rest with masses at equilibrium separation $d$:
 \begin{align}
 \mathbf{x}_1(0) &= [0, 0]^T, \quad \mathbf{x}_2(0) = [d, 0]^T \\
-\mathbf{v}_1(0) &= [0, 0]^T, \quad \mathbf{v}_2(0) = [0, 0]^T
+\mathbf{v}_1(0) &= [0, 0]^T, \quad \mathbf{v}_2(0) = [0, 0]^T \newline
 \end{align}
 
-\textbf{Boundary Conditions:}
+\noindent \textbf{Boundary Conditions:}
 
-For a free two-mass system, there are no boundary constraints. However, if one mass is fixed (e.g., $\mathbf{x}_2$ is constrained), this becomes a boundary condition:
+\noindent For a free two-mass system, there are no boundary constraints. However, if one mass is fixed (e.g., $\mathbf{x}_2$ is constrained), this becomes a boundary condition:
 \begin{equation}
 \mathbf{x}_2(t) = \mathbf{x}_{2,\text{fixed}} \quad \text{(for all } t \text{)}
 \end{equation}
 
 \subsubsection{Non-Linear (Exponential) Spring System}
 
-We now extend the system to use an exponential spring model, which better captures non-linear material behavior under large deformations. The exponential spring force law is:
+\noindent We now extend the system to use an exponential spring model, which better captures non-linear material behavior under large deformations. The exponential spring force law is:
 
 \begin{equation}
 \mathbf{F}_{spring} = k \frac{\mathbf{r}}{|\mathbf{r}|} \left( e^{\alpha |\mathbf{r}|} - 1 \right)
 \label{eq:exponential_force}
 \end{equation}
 
-where $\mathbf{r} = \mathbf{x}_2 - \mathbf{x}_1$ is the displacement vector from mass 1 to mass 2, $k$ is the spring constant (units: N), and $\alpha$ is the exponential decay rate (units: m$^{-1}$).
+\noindent where $\mathbf{r} = \mathbf{x}_2 - \mathbf{x}_1$ is the displacement vector from mass 1 to mass 2, $k$ is the spring constant (units: N), and $\alpha$ is the exponential decay rate (units: m$^{-1}$). \newline
 
-\textbf{Derivation of Exponential Spring Force:}
+\noindent \textbf{Derivation of Exponential Spring Force:}
 
-The exponential form $e^{\alpha |\mathbf{r}|} - 1$ ensures that:
+\noindent The exponential form $e^{\alpha |\mathbf{r}|} - 1$ ensures that:
 \begin{itemize}
     \item For small displacements: $e^{\alpha |\mathbf{r}|} - 1 \approx \alpha |\mathbf{r}|$, so $F \approx k \alpha |\mathbf{r}|$, approximating linear behavior
     \item For large displacements: The force grows exponentially, capturing material stiffening
-    \item The direction $\mathbf{r}/|\mathbf{r}|$ ensures the force acts along the line connecting the masses
+    \item The direction $\mathbf{r}/|\mathbf{r}|$ ensures the force acts along the line connecting the masses \newline
 \end{itemize}
 
-\textbf{Potential Energy:}
+\noindent \textbf{Potential Energy:}
 
-The potential energy stored in an exponential spring is derived from $U = -\int \mathbf{F} \cdot d\mathbf{r}$. For the exponential force law:
+\noindent The potential energy stored in an exponential spring is derived from $U = -\int \mathbf{F} \cdot d\mathbf{r}$. For the exponential force law:
 
 \begin{equation}
 U = \frac{k}{\alpha} \left( e^{\alpha |\mathbf{r}|} - \alpha |\mathbf{r}| - 1 \right)
 \label{eq:exponential_potential}
 \end{equation}
 
-This can be verified by checking that $\mathbf{F} = -\nabla U$:
+\noindent This can be verified by checking that $\mathbf{F} = -\nabla U$:
 \begin{align}
 \frac{\partial U}{\partial |\mathbf{r}|} &= \frac{k}{\alpha} \left( \alpha e^{\alpha |\mathbf{r}|} - \alpha \right) = k \left( e^{\alpha |\mathbf{r}|} - 1 \right) \\
 \nabla U &= \frac{\partial U}{\partial |\mathbf{r}|} \frac{\mathbf{r}}{|\mathbf{r}|} = k \left( e^{\alpha |\mathbf{r}|} - 1 \right) \frac{\mathbf{r}}{|\mathbf{r}|} \\
 \mathbf{F} &= -\nabla U = -k \frac{\mathbf{r}}{|\mathbf{r}|} \left( e^{\alpha |\mathbf{r}|} - 1 \right)
 \end{align}
 
-For mass 1, the force is $\mathbf{F}_{12} = k \frac{\mathbf{r}}{|\mathbf{r}|} (e^{\alpha |\mathbf{r}|} - 1)$ where $\mathbf{r} = \mathbf{x}_2 - \mathbf{x}_1$.
+\noindent For mass 1, the force is $\mathbf{F}_{12} = k \frac{\mathbf{r}}{|\mathbf{r}|} (e^{\alpha |\mathbf{r}|} - 1)$ where $\mathbf{r} = \mathbf{x}_2 - \mathbf{x}_1$. \newline
 
-\textbf{Free-Body Diagrams:}
+\noindent \textbf{Free-Body Diagrams:}
 
-For mass 1:
+\noindent For mass 1:
 \begin{itemize}
     \item Spring force: $\mathbf{F}_{12} = k \frac{\mathbf{x}_2 - \mathbf{x}_1}{|\mathbf{x}_2 - \mathbf{x}_1|} \left( e^{\alpha |\mathbf{x}_2 - \mathbf{x}_1|} - 1 \right)$
     \item External force: $\mathbf{F}_{ext,1}$
 \end{itemize}
 
-For mass 2:
+\noindent For mass 2:
 \begin{itemize}
     \item Spring force: $\mathbf{F}_{21} = -k \frac{\mathbf{x}_2 - \mathbf{x}_1}{|\mathbf{x}_2 - \mathbf{x}_1|} \left( e^{\alpha |\mathbf{x}_2 - \mathbf{x}_1|} - 1 \right) = -\mathbf{F}_{12}$
-    \item External force: $\mathbf{F}_{ext,2}$
+    \item External force: $\mathbf{F}_{ext,2}$ \newline
 \end{itemize}
 
-\textbf{Equations of Motion:}
+\noindent \textbf{Equations of Motion:}
 
 \begin{align}
 m_1 \frac{d\mathbf{v}_1}{dt} &= k \frac{\mathbf{x}_2 - \mathbf{x}_1}{|\mathbf{x}_2 - \mathbf{x}_1|} \left( e^{\alpha |\mathbf{x}_2 - \mathbf{x}_1|} - 1 \right) + \mathbf{F}_{ext,1} \label{eq:exp_mass1} \\
 m_2 \frac{d\mathbf{v}_2}{dt} &= -k \frac{\mathbf{x}_2 - \mathbf{x}_1}{|\mathbf{x}_2 - \mathbf{x}_1|} \left( e^{\alpha |\mathbf{x}_2 - \mathbf{x}_1|} - 1 \right) + \mathbf{F}_{ext,2} \label{eq:exp_mass2} \\
 \frac{d\mathbf{x}_1}{dt} &= \mathbf{v}_1 \\
-\frac{d\mathbf{x}_2}{dt} &= \mathbf{v}_2
+\frac{d\mathbf{x}_2}{dt} &= \mathbf{v}_2 \newline
 \end{align}
 
-\textbf{Initial and Boundary Conditions:}
+\noindent \textbf{Initial and Boundary Conditions:}
 
-Same as the linear system. For a system starting at equilibrium with separation $d$:
+\noindent Same as the linear system. For a system starting at equilibrium with separation $d$:
 \begin{align}
 \mathbf{x}_1(0) &= [0, 0]^T, \quad \mathbf{x}_2(0) = [d, 0]^T \\
 \mathbf{v}_1(0) &= [0, 0]^T, \quad \mathbf{v}_2(0) = [0, 0]^T
@@ -237,95 +237,95 @@ Same as the linear system. For a system starting at equilibrium with separation 
 
 \subsection{5×5 Lattice System}
 
-We now extend the two-mass system to a 5×5 square lattice containing 25 masses arranged in a regular grid. Each mass is connected to its nearest neighbors (horizontal and vertical) and diagonal neighbors, creating a complex network of spring interactions.
+\noindent We now extend the two-mass system to a 5×5 square lattice containing 25 masses arranged in a regular grid. Each mass is connected to its nearest neighbors (horizontal and vertical) and diagonal neighbors, creating a complex network of spring interactions.
 
-\begin{figure}[h]
+\begin{figure}[!h]
 \centering
 \includegraphics[width=0.7\textwidth]{../figures/5x5_lattice_system.png}
 \caption{Schematic of a 5×5 mass-spring lattice system. Twenty-five point masses are arranged in a regular grid with spacing $\Delta = 1.0$ m. Blue lines represent nearest-neighbor connections (horizontal and vertical), while red dashed lines represent diagonal connections. Each mass is connected to up to 8 neighbors (4 nearest neighbors and 4 diagonal neighbors for interior masses).}
 \label{fig:5x5_lattice}
 \end{figure}
 
-\textbf{System Description:}
+\noindent \textbf{System Description:}
 
-The 5×5 lattice consists of:
+\noindent The 5×5 lattice consists of:
 \begin{itemize}
     \item 25 point masses, each with mass $m = 1.0$ kg
     \item Mass positions: $\mathbf{x}_{i,j} = [x_{i,j}, y_{i,j}]^T$ where $i, j \in \{1, 2, \ldots, 5\}$ are row and column indices
-    \item Total degrees of freedom: 50 (25 masses × 2 coordinates)
+    \item Total degrees of freedom: 50 (25 masses × 2 coordinates) \newline
 \end{itemize}
 
-\textbf{Connectivity:}
+\noindent \textbf{Connectivity:}
 
-Each mass is connected to:
+\noindent Each mass is connected to:
 \begin{itemize}
     \item \textbf{Nearest neighbors} (horizontal and vertical): 4 connections for interior masses, 2-3 for edge masses, 1-2 for corner masses
     \item \textbf{Diagonal neighbors}: 4 connections for interior masses, 1-2 for edge masses, 0-1 for corner masses
 \end{itemize}
 
-For a mass at position $(i, j)$, the nearest neighbors are:
+\noindent For a mass at position $(i, j)$, the nearest neighbors are:
 \begin{itemize}
     \item Horizontal: $(i, j-1)$ and $(i, j+1)$
     \item Vertical: $(i-1, j)$ and $(i+1, j)$
 \end{itemize}
 
-Diagonal neighbors are:
+\noindent Diagonal neighbors are:
 \begin{itemize}
     \item $(i-1, j-1)$, $(i-1, j+1)$, $(i+1, j-1)$, $(i+1, j+1)$
 \end{itemize}
 
-\textbf{Spring Forces:}
+\noindent \textbf{Spring Forces:}
 
-All springs use the exponential force law. Nearest-neighbor springs use parameters $(k_{coupling}, \alpha_{coupling})$, while diagonal springs use $(k_{diagonal}, \alpha_{diagonal})$. Typically, $k_{diagonal} = 0.5 k_{coupling}$ and $\alpha_{diagonal} = \alpha_{coupling}$.
+\noindent All springs use the exponential force law. Nearest-neighbor springs use parameters $(k_{coupling}, \alpha_{coupling})$, while diagonal springs use $(k_{diagonal}, \alpha_{diagonal})$. Typically, $k_{diagonal} = 0.5 k_{coupling}$ and $\alpha_{diagonal} = \alpha_{coupling}$. \newline
 
-For a mass at $(i, j)$ connected to neighbor at $(i', j')$:
+\noindent For a mass at $(i, j)$ connected to neighbor at $(i', j')$:
 \begin{equation}
 \mathbf{F}_{spring} = k \frac{\mathbf{r}}{|\mathbf{r}|} \left( e^{\alpha |\mathbf{r}|} - 1 \right)
 \end{equation}
-where $\mathbf{r} = \mathbf{x}_{i',j'} - \mathbf{x}_{i,j}$ and $(k, \alpha)$ are the appropriate spring parameters.
+\noindent where $\mathbf{r} = \mathbf{x}_{i',j'} - \mathbf{x}_{i,j}$ and $(k, \alpha)$ are the appropriate spring parameters. \newline
 
-\textbf{Damping Forces:}
+\noindent \textbf{Damping Forces:}
 
-Viscous damping is applied only to nearest-neighbor springs. For a mass at $(i, j)$ connected to neighbor $(i', j')$:
+\noindent Viscous damping is applied only to nearest-neighbor springs. For a mass at $(i, j)$ connected to neighbor $(i', j')$:
 \begin{equation}
 \mathbf{F}_{damping} = -c (\mathbf{v}_{i,j} - \mathbf{v}_{i',j'})
 \label{eq:damping_force}
 \end{equation}
-where $c$ is the damping coefficient (N·s/m).
+where $c$ is the damping coefficient (N·s/m). \newline
 
-\textbf{Equations of Motion:}
+\noindent \textbf{Equations of Motion:}
 
-For each mass $(i, j)$, the equation of motion is:
+\noindent For each mass $(i, j)$, the equation of motion is:
 
 \begin{equation}
 m \frac{d\mathbf{v}_{i,j}}{dt} = \sum_{\text{neighbors}} \mathbf{F}_{spring} + \sum_{\text{nearest neighbors}} \mathbf{F}_{damping} + \mathbf{F}_{ext,i,j}
 \label{eq:lattice_motion}
 \end{equation}
 
-where the sums are over all connected neighbors. The kinematic equations are:
+\noindent where the sums are over all connected neighbors. The kinematic equations are:
 \begin{equation}
-\frac{d\mathbf{x}_{i,j}}{dt} = \mathbf{v}_{i,j}
+\frac{d\mathbf{x}_{i,j}}{dt} = \mathbf{v}_{i,j} \newline
 \end{equation}
 
-\textbf{Initial Conditions:}
+\noindent \textbf{Initial Conditions:}
 
-All masses start at their equilibrium grid positions with zero velocity:
+\noindent All masses start at their equilibrium grid positions with zero velocity:
 \begin{align}
 \mathbf{x}_{i,j}(0) &= [(j-1) \Delta, (i-1) \Delta]^T \\
 \mathbf{v}_{i,j}(0) &= [0, 0]^T
 \end{align}
-where $\Delta = 1.0$ m is the grid spacing.
+\noindent where $\Delta = 1.0$ m is the grid spacing. \newline
 
-\textbf{Boundary Conditions:}
+\noindent \textbf{Boundary Conditions:}
 
-For a free 5×5 lattice, there are no boundary constraints. All masses are free to move in response to applied forces.
+\noindent For a free 5×5 lattice, there are no boundary constraints. All masses are free to move in response to applied forces.
 
 \subsection{11×11 Lattice System Extension}
 \label{subsec:11x11_system}
 
-The 11×11 lattice extends the 5×5 system to 121 masses (242 degrees of freedom), with additional features including material property scaling, distributed loading, and backplate constraints.
+\noindent The 11×11 lattice extends the 5×5 system to 121 masses (242 degrees of freedom), with additional features including material property scaling, distributed loading, and backplate constraints. \newline
 
-\textbf{System Extension:}
+\noindent \textbf{System Extension:}
 
 \begin{itemize}
     \item 121 point masses arranged in an 11×11 grid
@@ -334,11 +334,11 @@ The 11×11 lattice extends the 5×5 system to 121 masses (242 degrees of freedom
     \item Grid spacing: $\Delta = 1.0$ m
 \end{itemize}
 
-\textbf{Material Property Scaling:}
+\noindent \textbf{Material Property Scaling:}
 
-Each column $j$ can have different material properties. The material properties for column $j$ are determined by a material ordering $\mathbf{p} = [p_1, p_2, \ldots, p_{11}]$, where $p_j$ specifies which material (1-11) is placed in column $j$.
+\noindent Each column $j$ can have different material properties. The material properties for column $j$ are determined by a material ordering $\mathbf{p} = [p_1, p_2, \ldots, p_{11}]$, where $p_j$ specifies which material (1-11) is placed in column $j$. \newline
 
-For material $m$, the properties are:
+\noindent For material $m$, the properties are:
 \begin{align}
 k_{coupling}^{(m)} &= k_0 \cdot \text{scale}^{(m)} \\
 k_{diagonal}^{(m)} &= 0.5 k_0 \cdot \text{scale}^{(m)} \\
@@ -347,13 +347,13 @@ c_{damping}^{(m)} &= c_0 \cdot \text{scale}^{(m)} \\
 \alpha_{diagonal}^{(m)} &= \alpha_0
 \end{align}
 
-where $\text{scale}^{(m)} = (2/3)^{m-1}$ for $m > 1$ and $\text{scale}^{(1)} = 1.0$, with base values $k_0 = 100$ N, $c_0 = 5$ N·s/m, and $\alpha_0 = 10$ m$^{-1}$.
+\noindent where $\text{scale}^{(m)} = (2/3)^{m-1}$ for $m > 1$ and $\text{scale}^{(1)} = 1.0$, with base values $k_0 = 100$ N, $c_0 = 5$ N·s/m, and $\alpha_0 = 10$ m$^{-1}$. \newline
 
-Vertical springs in column $j$ use the material properties of that column. Horizontal springs use base values.
+\noindent Vertical springs in column $j$ use the material properties of that column. Horizontal springs use base values. \newline
 
-\textbf{Distributed External Load:}
+\noindent \textbf{Distributed External Load:}
 
-A distributed force is applied to all masses in column 1 (left edge) for $t \in [0, t_{active}]$ where $t_{active} = 0.15$ s. The force distribution is trapezoidal:
+\noindent A distributed force is applied to all masses in column 1 (left edge) for $t \in [0, t_{active}]$ where $t_{active} = 0.15$ s. The force distribution is trapezoidal:
 \begin{equation}
 F_{row,i} = \begin{cases}
 F_{total}/20 & \text{if } i = 1 \text{ or } i = 11 \\
@@ -366,35 +366,35 @@ F_x &= F_{row,i} \cos(\theta) \\
 F_y &= F_{row,i} \sin(\theta)
 \end{align}
 
-\textbf{Backplate Constraint:}
+\noindent \textbf{Backplate Constraint:}
 
-An immovable backplate is positioned at $x = x_{backplate} = (N-1)\Delta + d_{backplate}$ where $d_{backplate} = 0.001$ m. Masses in column 11 (rightmost) cannot penetrate the backplate.
+\noindent An immovable backplate is positioned at $x = x_{backplate} = (N-1)\Delta + d_{backplate}$ where $d_{backplate} = 0.001$ m. Masses in column 11 (rightmost) cannot penetrate the backplate. \newline
 
-When a mass at $(i, 11)$ has $x_{i,11} > x_{backplate}$, a repulsive wall force is applied:
+\noindent When a mass at $(i, 11)$ has $x_{i,11} > x_{backplate}$, a repulsive wall force is applied:
 \begin{equation}
 F_{wall,x} = -k_{wall} \cdot \text{penetration} - c_{wall} \cdot v_{x,i,11}
 \label{eq:wall_force}
 \end{equation}
-where $\text{penetration} = x_{i,11} - x_{backplate}$, $k_{wall} = 10000$ N/m, and $c_{wall} = 10$ N·s/m. The wall force only acts in the $x$-direction.
+where $\text{penetration} = x_{i,11} - x_{backplate}$, $k_{wall} = 10000$ N/m, and $c_{wall} = 10$ N·s/m. The wall force only acts in the $x$-direction. \newline
 
-\textbf{Complete System of Equations:}
+\noindent \textbf{Complete System of Equations:}
 
-For each mass $(i, j)$:
+\noindent For each mass $(i, j)$:
 \begin{align}
 m \frac{d\mathbf{v}_{i,j}}{dt} &= \sum_{\text{all neighbors}} \mathbf{F}_{spring} + \sum_{\text{nearest neighbors}} \mathbf{F}_{damping} + \mathbf{F}_{ext,i,j} + \mathbf{F}_{wall,i,j} \\
 \frac{d\mathbf{x}_{i,j}}{dt} &= \mathbf{v}_{i,j}
 \end{align}
 
-where $\mathbf{F}_{wall,i,j}$ is non-zero only for masses in column 11 when penetration occurs.
+\noindent where $\mathbf{F}_{wall,i,j}$ is non-zero only for masses in column 11 when penetration occurs. \newline
 
-\textbf{Initial Conditions:}
+\noindent \textbf{Initial Conditions:}
 
 \begin{align}
 \mathbf{x}_{i,j}(0) &= [(j-1)\Delta, (i-1)\Delta]^T \\
 \mathbf{v}_{i,j}(0) &= [0, 0]^T
 \end{align}
 
-\textbf{Boundary Conditions:}
+\noindent \textbf{Boundary Conditions:}
 
 \begin{itemize}
     \item Left edge (column 1): Subject to distributed external force
@@ -406,7 +406,7 @@ where $\mathbf{F}_{wall,i,j}$ is non-zero only for masses in column 11 when pene
 
 \subsubsection{Objective Function}
 
-The optimization objective is to minimize the peak force transferred to the backplate:
+\noindent The optimization objective is to minimize the peak force transferred to the backplate:
 
 \begin{equation}
 \text{minimize} \quad F_{peak} = \max_{t \in [0,T]} |F_{backplate}(t)|
@@ -414,7 +414,7 @@ The optimization objective is to minimize the peak force transferred to the back
 
 \noindent where $F_{backplate}(t)$ is the force magnitude on the backplate at time $t$, and $T$ is the simulation end time. \newline
 
-\textbf{Why Peak Force?}
+\noindent \textbf{Why Peak Force?}
 \begin{itemize}
     \item \textbf{Time-independent}: Does not depend on simulation duration
     \item \textbf{Injury-relevant}: Peak force determines injury thresholds and penetration risk in armor applications
@@ -424,7 +424,7 @@ The optimization objective is to minimize the peak force transferred to the back
 
 \subsection{Decision Variable}
 
-The decision variable is a permutation of material indices $\mathbf{p} = [p_1, p_2, \ldots, p_{11}]$ where each $p_i \in \{1, 2, \ldots, 11\}$ and all $p_i$ are distinct. This permutation specifies which material is placed in each column (from left to right). \newline
+\noindent The decision variable is a permutation of material indices $\mathbf{p} = [p_1, p_2, \ldots, p_{11}]$ where each $p_i \in \{1, 2, \ldots, 11\}$ and all $p_i$ are distinct. This permutation specifies which material is placed in each column (from left to right). \newline
 
 \noindent The search space size is $11! = 39,916,800$ possible permutations, making exhaustive search computationally infeasible. \newline
 
@@ -438,7 +438,7 @@ The decision variable is a permutation of material indices $\mathbf{p} = [p_1, p
 
 \subsection{Material Properties}
 
-Each of the 11 materials is defined by a tuple of five properties:
+\noindent Each of the 11 materials is defined by a tuple of five properties:
 \begin{itemize}
     \item $k_{coupling}$: Spring constant for nearest-neighbor springs (N)
     \item $k_{diagonal}$: Spring constant for diagonal springs (N)
@@ -456,7 +456,7 @@ Each of the 11 materials is defined by a tuple of five properties:
     \item $\alpha_{diagonal} = 10$ m$^{-1}$
 \end{itemize}
 
-Table~\ref{tab:material_properties} presents the complete material property set for all 11 materials.
+\noindent Table~\ref{tab:material_properties} presents the complete material property set for all 11 materials.
 
 \begin{table}[h]
 \centering
@@ -485,21 +485,21 @@ Material & Scale Factor & $k_{coupling}$ (N) & $k_{diagonal}$ (N) & $c_{damping}
 \section{Analysis and Results}
 \label{sec:analysis}
 
-This section describes the numerical methods used to solve the system of ordinary differential equations, solution verification through energy balance analysis, and comprehensive results including position/velocity time histories, energy evolution, work input, and backplate force characteristics.
+\noindent This section describes the numerical methods used to solve the system of ordinary differential equations, solution verification through energy balance analysis, and comprehensive results including position/velocity time histories, energy evolution, work input, and backplate force characteristics.
 
 \subsection{Numerical Solution Technique}
 
-The system of equations developed in Section~\ref{sec:problem_formulation} forms a large system of coupled ordinary differential equations (ODEs). For the 11×11 lattice system, we have 242 first-order ODEs (121 masses × 2 coordinates for positions + 121 masses × 2 coordinates for velocities).
+\noindent The system of equations developed in Section~\ref{sec:problem_formulation} forms a large system of coupled ordinary differential equations (ODEs). For the 11×11 lattice system, we have 242 first-order ODEs (121 masses × 2 coordinates for positions + 121 masses × 2 coordinates for velocities).
 
 \subsubsection{ODE Formulation}
 
-The system can be written in the standard ODE form:
+\noindent The system can be written in the standard ODE form:
 \begin{equation}
 \frac{d\mathbf{u}}{dt} = f(\mathbf{u}, t)
 \label{eq:ode_form}
 \end{equation}
 
-where $\mathbf{u}(t)$ is the state vector containing all positions and velocities:
+\noindent where $\mathbf{u}(t)$ is the state vector containing all positions and velocities:
 \begin{equation}
 \mathbf{u} = \begin{bmatrix}
 \mathbf{x}_1 \\ \mathbf{x}_2 \\ \vdots \\ \mathbf{x}_{121} \\
@@ -511,7 +511,7 @@ v_{x1}, v_{y1}, v_{x2}, v_{y2}, \ldots, v_{x121}, v_{y121}
 \label{eq:state_vector}
 \end{equation}
 
-The function $f(\mathbf{u}, t)$ computes the time derivatives:
+\noindent The function $f(\mathbf{u}, t)$ computes the time derivatives:
 \begin{equation}
 f(\mathbf{u}, t) = \begin{bmatrix}
 \mathbf{v}_1 \\ \mathbf{v}_2 \\ \vdots \\ \mathbf{v}_{121} \\
@@ -519,7 +519,7 @@ f(\mathbf{u}, t) = \begin{bmatrix}
 \end{bmatrix}
 \end{equation}
 
-where $\mathbf{a}_i = \frac{1}{m} \sum \mathbf{F}_i$ is the acceleration of mass $i$, computed from all forces acting on that mass (spring forces, damping forces, external forces, and wall forces).
+\noindent where $\mathbf{a}_i = \frac{1}{m} \sum \mathbf{F}_i$ is the acceleration of mass $i$, computed from all forces acting on that mass (spring forces, damping forces, external forces, and wall forces).
 
 \subsubsection{Numerical Solver}
 
@@ -535,25 +535,25 @@ The ODE system is solved using the Vern9 algorithm, a 9th-order Runge-Kutta meth
     \item \textbf{Dense output}: Disabled (solutions saved only at specified output times)
 \end{itemize}
 
-The adaptive time stepping algorithm automatically adjusts the step size to maintain the specified tolerances. Smaller steps are taken when the solution changes rapidly (e.g., during initial transients or when forces are large), while larger steps are used during quiescent periods, improving computational efficiency.
+\noindent The adaptive time stepping algorithm automatically adjusts the step size to maintain the specified tolerances. Smaller steps are taken when the solution changes rapidly (e.g., during initial transients or when forces are large), while larger steps are used during quiescent periods, improving computational efficiency.
 
 \subsubsection{Implementation}
 
-The numerical solution is implemented using Julia's DifferentialEquations.jl package, which provides efficient, high-performance implementations of advanced ODE solvers. The right-hand side function $f(\mathbf{u}, t)$ is implemented to efficiently compute all forces for all masses, taking advantage of Julia's performance characteristics for numerical computations.
+\noindent The numerical solution is implemented using Julia's DifferentialEquations.jl package, which provides efficient, high-performance implementations of advanced ODE solvers. The right-hand side function $f(\mathbf{u}, t)$ is implemented to efficiently compute all forces for all masses, taking advantage of Julia's performance characteristics for numerical computations.
 
 \subsection{Solution Verification}
 
-To ensure the accuracy and correctness of the numerical solution, we employ energy balance verification. This provides a fundamental check that the numerical integration is conserving energy properly (accounting for energy input and dissipation).
+\noindent To ensure the accuracy and correctness of the numerical solution, we employ energy balance verification. This provides a fundamental check that the numerical integration is conserving energy properly (accounting for energy input and dissipation).
 
 \subsubsection{Energy Balance Formulation}
 
-For a system with damping and external forces, the work-energy theorem states:
+\noindent For a system with damping and external forces, the work-energy theorem states:
 \begin{equation}
 W_{external}(t) = E_{total}(t) + E_{dissipated}(t)
 \label{eq:work_energy}
 \end{equation}
 
-where:
+\noindent where:
 \begin{itemize}
     \item $W_{external}(t)$ is the cumulative work done by external forces up to time $t$
     \item $E_{total}(t) = T(t) + U(t)$ is the total mechanical energy (kinetic + potential)
@@ -562,30 +562,30 @@ where:
 
 \subsubsection{Kinetic Energy}
 
-The total kinetic energy of the system is:
+\noindent The total kinetic energy of the system is:
 \begin{equation}
 T(t) = \frac{1}{2} m \sum_{i=1}^{N} |\mathbf{v}_i(t)|^2 = \frac{1}{2} m \sum_{i=1}^{N} (v_{xi}^2 + v_{yi}^2)
 \label{eq:kinetic_energy}
 \end{equation}
 
-where $N = 121$ is the number of masses and $m = 1.0$ kg is the mass of each particle.
+\noindent where $N = 121$ is the number of masses and $m = 1.0$ kg is the mass of each particle.
 
 \subsubsection{Potential Energy}
 
-The total potential energy is the sum over all springs. For an exponential spring connecting masses $i$ and $j$:
+\noindent The total potential energy is the sum over all springs. For an exponential spring connecting masses $i$ and $j$:
 \begin{equation}
 U_{spring} = \frac{k}{\alpha} \left( e^{\alpha |\mathbf{r}_{ij}|} - \alpha |\mathbf{r}_{ij}| - 1 \right)
 \end{equation}
 
-where $\mathbf{r}_{ij} = \mathbf{x}_j - \mathbf{x}_i$ is the displacement vector and $(k, \alpha)$ are the spring parameters.
+\noindent where $\mathbf{r}_{ij} = \mathbf{x}_j - \mathbf{x}_i$ is the displacement vector and $(k, \alpha)$ are the spring parameters.
 
-The total potential energy is:
+\noindent The total potential energy is:
 \begin{equation}
 U(t) = \sum_{\text{all springs}} U_{spring} + U_{wall}(t)
 \label{eq:potential_energy}
 \end{equation}
 
-where $U_{wall}(t)$ accounts for the potential energy stored in wall deformations (when masses penetrate the backplate):
+\noindent where $U_{wall}(t)$ accounts for the potential energy stored in wall deformations (when masses penetrate the backplate):
 \begin{equation}
 U_{wall} = \sum_{i \in \text{column 11}} \begin{cases}
 \frac{1}{2} k_{wall} \cdot \text{penetration}_i^2 & \text{if } x_i > x_{backplate} \\
@@ -595,32 +595,32 @@ U_{wall} = \sum_{i \in \text{column 11}} \begin{cases}
 
 \subsubsection{Work Done by External Forces}
 
-The cumulative work done by external forces is calculated by integrating the power input:
+\noindent The cumulative work done by external forces is calculated by integrating the power input:
 \begin{equation}
 W_{external}(t) = \int_0^t \sum_{i=1}^{N} \mathbf{F}_{ext,i}(\tau) \cdot \mathbf{v}_i(\tau) \, d\tau
 \label{eq:work_calculation}
 \end{equation}
 
-For the distributed load on column 1, this becomes:
+\noindent For the distributed load on column 1, this becomes:
 \begin{equation}
 W_{external}(t) = \sum_{i=1}^{11} \int_0^{\min(t, t_{active})} F_{row,i} [\cos(\theta) v_{xi,1}(\tau) + \sin(\theta) v_{yi,1}(\tau)] \, d\tau
 \end{equation}
 
-where $t_{active} = 0.15$ s is the duration of external force application.
+\noindent where $t_{active} = 0.15$ s is the duration of external force application.
 
 \subsubsection{Energy Dissipation}
 
-The energy dissipated through viscous damping is:
+\noindent The energy dissipated through viscous damping is:
 \begin{equation}
 E_{dissipated}(t) = \int_0^t \sum_{\text{all dampers}} c |\mathbf{v}_i(\tau) - \mathbf{v}_j(\tau)|^2 \, d\tau
 \label{eq:energy_dissipation}
 \end{equation}
 
-where the sum is over all nearest-neighbor spring connections with damping coefficient $c$.
+\noindent where the sum is over all nearest-neighbor spring connections with damping coefficient $c$.
 
 \subsubsection{Verification Results}
 
-Energy balance verification is performed by computing all energy components at each output time step and checking that Equation~\ref{eq:work_energy} is satisfied within numerical precision. Typical results show:
+\noindent Energy balance verification is performed by computing all energy components at each output time step and checking that Equation~\ref{eq:work_energy} is satisfied within numerical precision. Typical results show:
 
 \begin{itemize}
     \item \textbf{Energy balance error}: $|W_{external} - (E_{total} + E_{dissipated})| < 10^{-6}$ J throughout the simulation
@@ -628,15 +628,15 @@ Energy balance verification is performed by computing all energy components at e
     \item \textbf{Energy conservation}: In the absence of external forces and damping, total energy is conserved to machine precision
 \end{itemize}
 
-These results confirm that the numerical integration is accurate and that energy accounting is correct, providing confidence in the solution validity.
+\noindent These results confirm that the numerical integration is accurate and that energy accounting is correct, providing confidence in the solution validity.
 
 \subsection{Dynamic Response Results}
 
-This subsection presents comprehensive results from simulations of the 11×11 lattice system, including position and velocity time histories for representative mass points, energy evolution, work input, and backplate force characteristics.
+\noindent This subsection presents comprehensive results from simulations of the 11×11 lattice system, including position and velocity time histories for representative mass points, energy evolution, work input, and backplate force characteristics.
 
 \subsubsection{Position and Velocity Time Histories}
 
-Figure~\ref{fig:position_time} shows the position components (x and y) versus time for four representative mass points:
+\noindent Figure~\ref{fig:position_time} shows the position components (x and y) versus time for four representative mass points:
 \begin{itemize}
     \item Corner mass (1,1): Top-left corner
     \item Edge mass (6,1): Left edge, middle row
@@ -644,16 +644,16 @@ Figure~\ref{fig:position_time} shows the position components (x and y) versus ti
     \item Right edge mass (6,11): Right edge, near backplate
 \end{itemize}
 
-These plots reveal wave propagation patterns, oscillation characteristics, and the effect of boundary conditions on system response. The left edge mass (6,1) shows the largest initial displacement due to direct force application, while the right edge mass (6,11) exhibits delayed response as waves propagate across the lattice. The center mass (6,6) shows intermediate behavior, and the corner mass (1,1) experiences smaller displacements due to its position at the edge of the force distribution.
+\noindent These plots reveal wave propagation patterns, oscillation characteristics, and the effect of boundary conditions on system response. The left edge mass (6,1) shows the largest initial displacement due to direct force application, while the right edge mass (6,11) exhibits delayed response as waves propagate across the lattice. The center mass (6,6) shows intermediate behavior, and the corner mass (1,1) experiences smaller displacements due to its position at the edge of the force distribution.
 
-\begin{figure}[h]
+\begin{figure}[!h]
 \centering
 \includegraphics[width=0.95\textwidth]{../figures/position_vs_time.png}
 \caption{Position components (x and y) versus time for four representative mass points in the 11×11 lattice system. The left edge mass (6,1) experiences the largest initial displacement due to direct force application, while waves propagate across the lattice to reach other masses. The right edge mass (6,11) shows delayed response and is constrained by the backplate.}
 \label{fig:position_time}
 \end{figure}
 
-Figure~\ref{fig:velocity_time} shows the corresponding velocity components versus time for the same mass points, illustrating acceleration patterns and velocity magnitude evolution. The velocity plots reveal the dynamic response characteristics, including initial acceleration phases, oscillation frequencies, and damping effects.
+\noindent Figure~\ref{fig:velocity_time} shows the corresponding velocity components versus time for the same mass points, illustrating acceleration patterns and velocity magnitude evolution. The velocity plots reveal the dynamic response characteristics, including initial acceleration phases, oscillation frequencies, and damping effects.
 
 \begin{figure}[h]
 \centering
@@ -664,7 +664,7 @@ Figure~\ref{fig:velocity_time} shows the corresponding velocity components versu
 
 \subsubsection{Energy Evolution}
 
-Figure~\ref{fig:energy_time} presents the evolution of kinetic energy, potential energy, and total energy versus time. Key observations include:
+\noindent Figure~\ref{fig:energy_time} presents the evolution of kinetic energy, potential energy, and total energy versus time. Key observations include:
 \begin{itemize}
     \item Initial energy input during the force application period ($t < 0.15$ s)
     \item Energy conversion between kinetic and potential forms, showing oscillatory exchange
@@ -673,7 +673,7 @@ Figure~\ref{fig:energy_time} presents the evolution of kinetic energy, potential
     \item Work input (dashed line) matches total energy plus dissipated energy, confirming energy balance
 \end{itemize}
 
-\begin{figure}[h]
+\begin{figure}[!h]
 \centering
 \includegraphics[width=0.95\textwidth]{../figures/energy_vs_time.png}
 \caption{Energy evolution versus time showing kinetic energy (blue), potential energy (red), total energy (green), and work input (orange dashed). The work-energy balance is verified by the agreement between work input and the sum of total energy and dissipated energy. Energy dissipation through damping causes the total energy to decrease over time.}
@@ -682,9 +682,9 @@ Figure~\ref{fig:energy_time} presents the evolution of kinetic energy, potential
 
 \subsubsection{Work Input}
 
-Figure~\ref{fig:work_time} shows the cumulative work done by external forces versus time. The work increases during the force application period ($t < 0.15$ s) and remains constant afterward, as expected. The work input provides the total energy added to the system, which is then partitioned between stored energy (kinetic + potential) and dissipated energy.
+\noindent Figure~\ref{fig:work_time} shows the cumulative work done by external forces versus time. The work increases during the force application period ($t < 0.15$ s) and remains constant afterward, as expected. The work input provides the total energy added to the system, which is then partitioned between stored energy (kinetic + potential) and dissipated energy.
 
-\begin{figure}[h]
+\begin{figure}[!h]
 \centering
 \includegraphics[width=0.85\textwidth]{../figures/work_vs_time.png}
 \caption{Cumulative work done by external forces versus time. Work increases during the force application period (0-0.15 s) and remains constant afterward. This work input equals the sum of total mechanical energy and dissipated energy, verifying the work-energy theorem.}
@@ -693,7 +693,7 @@ Figure~\ref{fig:work_time} shows the cumulative work done by external forces ver
 
 \subsubsection{Backplate Reaction Force}
 
-Figure~\ref{fig:backplate_force} presents the reaction force magnitude on the backplate versus time. This is the critical metric for optimization, showing:
+\noindent Figure~\ref{fig:backplate_force} presents the reaction force magnitude on the backplate versus time. This is the critical metric for optimization, showing:
 \begin{itemize}
     \item Initial delay before waves reach the backplate (approximately 0.1-0.2 s)
     \item Peak force magnitude and timing, which determines system performance
@@ -701,9 +701,9 @@ Figure~\ref{fig:backplate_force} presents the reaction force magnitude on the ba
     \item Gradual decay as energy dissipates through damping
 \end{itemize}
 
-The peak force magnitude is the optimization objective, as it represents the worst-case loading scenario that could cause injury or penetration in armor applications.
+\noindent The peak force magnitude is the optimization objective, as it represents the worst-case loading scenario that could cause injury or penetration in armor applications.
 
-\begin{figure}[h]
+\begin{figure}[!h]
 \centering
 \includegraphics[width=0.85\textwidth]{../figures/backplate_force_vs_time.png}
 \caption{Backplate reaction force magnitude versus time. The force shows an initial delay as waves propagate across the lattice, followed by a peak force that represents the critical loading condition. Oscillations occur due to wave reflections and system dynamics, with gradual decay due to energy dissipation. The peak force magnitude is the optimization objective.}
@@ -713,7 +713,7 @@ The peak force magnitude is the optimization objective, as it represents the wor
 \section{Optimization Algorithms}
 \label{sec:optimization}
 
-We implemented and compared six optimization algorithms from three Julia optimization packages:
+\noindent We implemented and compared six optimization algorithms from three Julia optimization packages:
 
 \subsection{Metaheuristics.jl Algorithms}
 
@@ -737,7 +737,7 @@ We implemented and compared six optimization algorithms from three Julia optimiz
 
 \subsection{Continuous Encoding}
 
-Since most optimizers work with continuous variables, we use a continuous encoding scheme:
+\noindent Since most optimizers work with continuous variables, we use a continuous encoding scheme:
 \begin{enumerate}
     \item Generate $N$ continuous values in $[0, 1]$
     \item Convert to permutation using \texttt{sortperm()}, which returns the permutation that would sort the continuous values
@@ -748,7 +748,7 @@ Since most optimizers work with continuous variables, we use a continuous encodi
 
 \subsection{Objective Function Evaluation}
 
-Each function evaluation:
+\noindent Each function evaluation:
 \begin{enumerate}
     \item Converts the continuous encoding to a permutation (if needed)
     \item Validates the permutation
@@ -761,7 +761,7 @@ Each function evaluation:
 
 \subsection{Reproducibility Details}
 
-To ensure reproducibility, the following configuration details are provided:
+\noindent To ensure reproducibility, the following configuration details are provided:
 \begin{itemize}
     \item \textbf{Random seeds}: Metaheuristics.jl algorithms used seed = 1 for random number generation. BlackBoxOptim and Optim.jl use their default random number generators (not explicitly seeded in this run).
     \item \textbf{Algorithm parameters}: 
@@ -776,14 +776,14 @@ To ensure reproducibility, the following configuration details are provided:
 
 \subsection{Parallel Execution}
 
-All optimizers run in parallel using Julia's \texttt{@async} tasks, providing approximately 5-7× speedup compared to sequential execution. The total optimization time is approximately the time of the slowest optimizer, not the sum of all optimizers.
+\noindent All optimizers run in parallel using Julia's \texttt{@async} tasks, providing approximately 5-7× speedup compared to sequential execution. The total optimization time is approximately the time of the slowest optimizer, not the sum of all optimizers.
 
 \section{Results}
 \label{sec:results}
 
 \subsection{Optimization Configuration}
 
-All optimizers were run with:
+\noindent All optimizers were run with:
 \begin{itemize}
     \item Maximum evaluations: 100-102 (algorithm-dependent)
     \item System size: 11×11 lattice (121 masses, 242 DOF)
@@ -792,7 +792,7 @@ All optimizers were run with:
 
 \subsection{Baseline Comparison}
 
-To contextualize the optimization results, we compare against a simple baseline: sequential material ordering $[1, 2, 3, \ldots, 11]$, which places materials in order from stiffest to softest. While this heuristic seems intuitive (stiff materials first), the optimized orderings demonstrate that material interactions and wave propagation effects create complex dependencies that require optimization. \newline
+\noindent To contextualize the optimization results, we compare against a simple baseline: sequential material ordering $[1, 2, 3, \ldots, 11]$, which places materials in order from stiffest to softest. While this heuristic seems intuitive (stiff materials first), the optimized orderings demonstrate that material interactions and wave propagation effects create complex dependencies that require optimization. \newline
 
 \noindent The sequential baseline ordering $[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]$ was evaluated and produced a peak force of 1747.78 N. This provides a quantitative comparison point for the optimization results:
 \begin{itemize}
@@ -812,9 +812,9 @@ To contextualize the optimization results, we compare against a simple baseline:
 
 \subsection{Performance Comparison}
 
-Table~\ref{tab:optimizer_comparison} presents the comprehensive comparison of all optimizers. The results show significant variation in both solution quality and computational efficiency. The "Best Found at Eval" column indicates the evaluation number at which each optimizer discovered its best solution, providing insight into convergence speed.
+\noindent Table~\ref{tab:optimizer_comparison} presents the comprehensive comparison of all optimizers. The results show significant variation in both solution quality and computational efficiency. The "Best Found at Eval" column indicates the evaluation number at which each optimizer discovered its best solution, providing insight into convergence speed.
 
-\begin{table}[h]
+\begin{table}[!h]
 \centering
 \caption{Comparison of Optimization Algorithms for Material Ordering}
 \label{tab:optimizer_comparison}
@@ -877,18 +877,18 @@ Optim & 2912.76 & 101 & 96 & 22057.1 \\
     \end{itemize}
 \end{enumerate}
 
-\begin{figure}[h]
+\begin{figure}[!h]
 \centering
 \includegraphics[width=0.75\textwidth]{../figures/best_optimized_configuration_thumbnail.png}
 \caption{Initial state of the best optimized configuration found by BlackBoxOptim (peak force: 1497.89 N). The 11×11 lattice shows the optimal material ordering $[1, 7, 5, 9, 3, 6, 11, 8, 2, 4, 10]$ across columns, with material 1 (highest stiffness) placed in the first column. The full animation demonstrates the dynamic response of this optimized configuration under distributed loading.}
 \label{fig:best_optimized_configuration}
 \end{figure}
 
-Figure~\ref{fig:best_optimized_configuration} shows the initial configuration of the best optimized material ordering found by BlackBoxOptim. This visualization illustrates the spatial arrangement of materials across the lattice columns, with the optimal ordering achieving a peak force of 1497.89 N.
+\noindent Figure~\ref{fig:best_optimized_configuration} shows the initial configuration of the best optimized material ordering found by BlackBoxOptim. This visualization illustrates the spatial arrangement of materials across the lattice columns, with the optimal ordering achieving a peak force of 1497.89 N.
 
 \subsection{Convergence Analysis}
 
-Figure~\ref{fig:convergence_comparison} shows the convergence behavior of all optimizers, plotting peak force versus function evaluations on a logarithmic scale. The plot reveals several important patterns:
+\noindent Figure~\ref{fig:convergence_comparison} shows the convergence behavior of all optimizers, plotting peak force versus function evaluations on a logarithmic scale. The plot reveals several important patterns:
 
 \begin{itemize}
     \item \textbf{High Variability}: All optimizers show significant variability in evaluation values, which is expected for permutation optimization problems with a large search space.
@@ -904,7 +904,7 @@ Figure~\ref{fig:convergence_comparison} shows the convergence behavior of all op
     \item \textbf{Evaluation Count Variations}: While the maximum evaluation limit was set to 100, some optimizers completed 101-102 evaluations. BlackBoxOptim performed 102 evaluations and Optim performed 101 evaluations. This occurs because the evaluation limit is enforced within the objective function, and some optimizers may perform a final convergence check or solution verification evaluation after reaching the limit. The Metaheuristics algorithms (DE, ECA, GA, PSO) strictly adhered to the 100-evaluation limit due to their internal stopping criteria that respect the \texttt{f\_calls\_limit} parameter.
 \end{itemize}
 
-\begin{figure}[h]
+\begin{figure}[!h]
 \centering
 \includegraphics[width=0.95\textwidth]{../figures/optimizer_convergence_comparison.png}
 \caption{Convergence comparison of all optimizers showing peak force versus function evaluations on a logarithmic scale. The plot displays raw evaluation values (not best-so-far), revealing the exploration behavior of each algorithm. Key observations: (1) BlackBoxOptim (blue) found its best solution very early (evaluation 4) at 1497.89 N, then continued exploring; (2) Metaheuristics\_PSO (orange) shows consistent improvement, finding its best solution at evaluation 79; (3) Metaheuristics algorithms (DE, ECA, GA) start with identical initial values due to shared random seed, then diverge as their populations evolve; (4) Optim (red) shows high variability and struggles to find competitive solutions throughout the run. The logarithmic scale emphasizes early optimization behavior, which is critical for understanding algorithm convergence characteristics.}
@@ -913,7 +913,7 @@ Figure~\ref{fig:convergence_comparison} shows the convergence behavior of all op
 
 \subsection{Algorithm-Specific Observations}
 
-\textbf{BlackBoxOptim}: Despite being the slowest optimizer, it found the best solution. The adaptive DE strategy appears effective for this permutation problem, though the computational cost is high. \newline
+\noindent \textbf{BlackBoxOptim}: Despite being the slowest optimizer, it found the best solution. The adaptive DE strategy appears effective for this permutation problem, though the computational cost is high. \newline
 
 \noindent \textbf{Metaheuristics\_PSO}: Excellent balance between solution quality (second best) and reasonable computation time. The swarm-based approach seems well-suited for this problem. \newline
 
@@ -923,62 +923,62 @@ Figure~\ref{fig:convergence_comparison} shows the convergence behavior of all op
 
 \noindent \textbf{Optim (Simulated Annealing)}: Performed poorly, finding a solution nearly twice as bad as the best. Simulated annealing may not be well-suited for permutation problems of this size, or the cooling schedule needs adjustment. \newline
 
-\section{Discussion}
+\section{Discussion of Results}
 \label{sec:discussion}
 
-This section provides comprehensive discussion of the physical phenomena observed in the simulations, wave propagation patterns, energy dynamics, and optimization findings.
+\noindent This section provides comprehensive discussion of the physical phenomena observed in the simulations, wave propagation patterns, energy dynamics, and optimization findings.
 
 \subsection{Physical Interpretation of Dynamic Response}
 
-The position and velocity time histories (Figures~\ref{fig:position_time} and \ref{fig:velocity_time}) reveal several important physical phenomena:
+\noindent The position and velocity time histories (Figures~\ref{fig:position_time} and \ref{fig:velocity_time}) reveal several important physical phenomena: \newline
 
-\textbf{Wave Propagation:} The delayed response of masses away from the impact site (left edge) demonstrates wave propagation across the lattice. The center mass (6,6) responds after the left edge mass (6,1), and the right edge mass (6,11) responds last, showing that mechanical waves travel from the impact site toward the backplate. The wave speed depends on the material properties (spring constants and mass), with stiffer materials generally supporting faster wave propagation.
+\noindent \textbf{Wave Propagation:} The delayed response of masses away from the impact site (left edge) demonstrates wave propagation across the lattice. The center mass (6,6) responds after the left edge mass (6,1), and the right edge mass (6,11) responds last, showing that mechanical waves travel from the impact site toward the backplate. The wave speed depends on the material properties (spring constants and mass), with stiffer materials generally supporting faster wave propagation. \newline
 
-\textbf{Oscillatory Behavior:} All masses exhibit oscillatory motion due to spring restoring forces. The oscillation frequencies depend on the local material properties and the system's natural modes. The exponential spring model introduces non-linear effects that can cause frequency shifts and amplitude-dependent behavior.
+\noindent \textbf{Oscillatory Behavior:} All masses exhibit oscillatory motion due to spring restoring forces. The oscillation frequencies depend on the local material properties and the system's natural modes. The exponential spring model introduces non-linear effects that can cause frequency shifts and amplitude-dependent behavior. \newline
 
-\textbf{Damping Effects:} The gradual decay of oscillations over time demonstrates the effect of viscous damping. Energy is continuously dissipated through relative motion between connected masses, causing the system to approach equilibrium. The damping coefficient $c = 5.0$ N·s/m provides noticeable energy dissipation while maintaining numerical stability.
+\noindent \textbf{Damping Effects:} The gradual decay of oscillations over time demonstrates the effect of viscous damping. Energy is continuously dissipated through relative motion between connected masses, causing the system to approach equilibrium. The damping coefficient $c = 5.0$ N·s/m provides noticeable energy dissipation while maintaining numerical stability. \newline
 
-\textbf{Boundary Effects:} The right edge mass (6,11) shows constrained motion due to the backplate. When the mass attempts to move beyond the backplate position, the wall force prevents penetration, causing reflection and compression of the lattice. This boundary condition significantly affects the system dynamics and force transfer characteristics.
+\noindent \textbf{Boundary Effects:} The right edge mass (6,11) shows constrained motion due to the backplate. When the mass attempts to move beyond the backplate position, the wall force prevents penetration, causing reflection and compression of the lattice. This boundary condition significantly affects the system dynamics and force transfer characteristics. \newline
 
 \subsection{Wave Propagation Patterns}
 
-The lattice system exhibits complex wave propagation behavior due to its heterogeneous material properties and boundary conditions:
+\noindent The lattice system exhibits complex wave propagation behavior due to its heterogeneous material properties and boundary conditions: \newline
 
-\textbf{Primary Wave:} The initial wave front propagates from the left edge (impact site) toward the right edge. This primary wave carries the initial energy input and causes the first significant displacement of masses.
+\noindent \textbf{Primary Wave:} The initial wave front propagates from the left edge (impact site) toward the right edge. This primary wave carries the initial energy input and causes the first significant displacement of masses. \newline
 
-\textbf{Wave Reflection:} When waves reach the backplate, they reflect back into the lattice. This reflection creates secondary waves that interact with the primary wave, leading to interference patterns and complex dynamics. The reflection coefficient depends on the impedance mismatch between the lattice material and the backplate constraint.
+\noindent \textbf{Wave Reflection:} When waves reach the backplate, they reflect back into the lattice. This reflection creates secondary waves that interact with the primary wave, leading to interference patterns and complex dynamics. The reflection coefficient depends on the impedance mismatch between the lattice material and the backplate constraint. \newline
 
-\textbf{Material Heterogeneity:} The varying material properties across columns create impedance variations that affect wave propagation. Stiffer materials (lower column indices) have higher impedance, while softer materials (higher column indices) have lower impedance. This heterogeneity causes wave scattering and mode conversion, contributing to the complex dynamics observed.
+\noindent \textbf{Material Heterogeneity:} The varying material properties across columns create impedance variations that affect wave propagation. Stiffer materials (lower column indices) have higher impedance, while softer materials (higher column indices) have lower impedance. This heterogeneity causes wave scattering and mode conversion, contributing to the complex dynamics observed. \newline
 
-\textbf{Energy Distribution:} Wave propagation distributes energy throughout the lattice. Initially, energy is concentrated near the impact site, but waves carry energy across the system. The backplate reflection causes energy to accumulate near the right edge, leading to higher forces and displacements in that region.
+\noindent \textbf{Energy Distribution:} Wave propagation distributes energy throughout the lattice. Initially, energy is concentrated near the impact site, but waves carry energy across the system. The backplate reflection causes energy to accumulate near the right edge, leading to higher forces and displacements in that region. \newline
 
 \subsection{Energy Dynamics and Dissipation}
 
-The energy evolution (Figure~\ref{fig:energy_time}) reveals important aspects of energy flow and dissipation:
+\noindent The energy evolution (Figure~\ref{fig:energy_time}) reveals important aspects of energy flow and dissipation: \newline
 
-\textbf{Energy Input Phase:} During the force application period ($t < 0.15$ s), external work is done on the system, increasing total energy. The work input (Figure~\ref{fig:work_time}) shows a rapid increase during this phase, then remains constant.
+\noindent \textbf{Energy Input Phase:} During the force application period ($t < 0.15$ s), external work is done on the system, increasing total energy. The work input (Figure~\ref{fig:work_time}) shows a rapid increase during this phase, then remains constant. \newline
 
-\textbf{Energy Conversion:} Kinetic and potential energies oscillate out of phase, demonstrating energy conversion between these forms. When masses are at maximum displacement, potential energy is maximum and kinetic energy is minimum. Conversely, when masses pass through equilibrium, kinetic energy is maximum and potential energy is minimum.
+\noindent \textbf{Energy Conversion:} Kinetic and potential energies oscillate out of phase, demonstrating energy conversion between these forms. When masses are at maximum displacement, potential energy is maximum and kinetic energy is minimum. Conversely, when masses pass through equilibrium, kinetic energy is maximum and potential energy is minimum. \newline
 
-\textbf{Energy Dissipation:} After force removal, the total energy decreases monotonically due to viscous damping. The dissipation rate is highest when relative velocities between connected masses are largest, which typically occurs during initial transients. As the system approaches equilibrium, velocities decrease and dissipation becomes slower.
+\noindent \textbf{Energy Dissipation:} After force removal, the total energy decreases monotonically due to viscous damping. The dissipation rate is highest when relative velocities between connected masses are largest, which typically occurs during initial transients. As the system approaches equilibrium, velocities decrease and dissipation becomes slower. \newline
 
-\textbf{Energy Balance Verification:} The agreement between work input and the sum of total energy plus dissipated energy confirms that energy accounting is correct. This verification provides confidence in the numerical solution accuracy and physical model validity.
+\noindent \textbf{Energy Balance Verification:} The agreement between work input and the sum of total energy plus dissipated energy confirms that energy accounting is correct. This verification provides confidence in the numerical solution accuracy and physical model validity. \newline
 
 \subsection{Backplate Force Characteristics}
 
-The backplate reaction force (Figure~\ref{fig:backplate_force}) is the critical metric for optimization and reveals important force transfer characteristics:
+\noindent The backplate reaction force (Figure~\ref{fig:backplate_force}) is the critical metric for optimization and reveals important force transfer characteristics: \newline
 
-\textbf{Peak Force Timing:} The peak force occurs after an initial delay as waves propagate across the lattice. The timing depends on wave speed and lattice dimensions. For the 11×11 system with the given material properties, the peak typically occurs around 0.2-0.4 seconds after impact.
+\noindent \textbf{Peak Force Timing:} The peak force occurs after an initial delay as waves propagate across the lattice. The timing depends on wave speed and lattice dimensions. For the 11×11 system with the given material properties, the peak typically occurs around 0.2-0.4 seconds after impact. \newline
 
-\textbf{Force Oscillations:} The force exhibits oscillations due to wave reflections and system dynamics. Multiple peaks may occur as waves reflect and interfere, creating complex loading patterns. The optimization objective focuses on the maximum force magnitude, representing the worst-case scenario.
+\noindent \textbf{Force Oscillations:} The force exhibits oscillations due to wave reflections and system dynamics. Multiple peaks may occur as waves reflect and interfere, creating complex loading patterns. The optimization objective focuses on the maximum force magnitude, representing the worst-case scenario. \newline
 
-\textbf{Force Decay:} After the peak, the force gradually decays as energy dissipates through damping. The decay rate depends on the damping coefficient and system dynamics. Eventually, the system approaches equilibrium with minimal backplate force.
+\noindent \textbf{Force Decay:} After the peak, the force gradually decays as energy dissipates through damping. The decay rate depends on the damping coefficient and system dynamics. Eventually, the system approaches equilibrium with minimal backplate force. \newline
 
-\textbf{Material Ordering Effects:} Different material orderings produce different force profiles. Optimal orderings minimize the peak force by managing wave propagation, energy distribution, and force transmission. The optimization results show that strategic material placement can reduce peak force by 14-48\% compared to simple heuristics.
+\noindent \textbf{Material Ordering Effects:} Different material orderings produce different force profiles. Optimal orderings minimize the peak force by managing wave propagation, energy distribution, and force transmission. The optimization results show that strategic material placement can reduce peak force by 14-48\% compared to simple heuristics. \newline
 
 \subsection{Optimization Problem Characteristics}
 
-The material ordering optimization problem exhibits several challenging characteristics:
+\noindent The material ordering optimization problem exhibits several challenging characteristics:
 
 \begin{itemize}
     \item \textbf{Large Search Space}: With $11! = 39.9$ million permutations, exhaustive search is infeasible.
@@ -992,7 +992,7 @@ The material ordering optimization problem exhibits several challenging characte
 
 \subsection{Algorithm Selection Recommendations}
 
-Based on the results, we recommend:
+\noindent Based on the results, we recommend:
 
 \begin{enumerate}
     \item \textbf{For Best Solution Quality}: Use BlackBoxOptim if computational time is not a constraint. The adaptive strategy and thorough exploration justify the longer runtime.
@@ -1006,7 +1006,7 @@ Based on the results, we recommend:
 
 \subsection{Physical Insights and Validation}
 
-The optimal material orderings reveal interesting physical insights that can be validated against engineering principles:
+\noindent The optimal material orderings reveal interesting physical insights that can be validated against engineering principles:
 
 \begin{itemize}
     \item \textbf{Material 1 Placement}: All top performers place material 1 (highest stiffness, $k_{coupling} = 100$ N) in column 1, suggesting that stiffer materials near the impact side help reduce peak force. This is physically reasonable as stiffer materials can better resist initial impact and distribute forces more effectively.
@@ -1029,55 +1029,55 @@ The optimal material orderings reveal interesting physical insights that can be 
 \section{Limitations}
 \label{sec:limitations}
 
-This section addresses the limitations, assumptions, and constraints of the current model and analysis.
+\noindent This section addresses the limitations, assumptions, and constraints of the current model and analysis.
 
 \subsection{Model Assumptions}
 
-\textbf{Point Mass Approximation:} All masses are treated as point particles with no rotational inertia or finite size effects. This simplification is appropriate for systems where the mass dimensions are small compared to the lattice spacing, but may not capture effects of finite particle size in some applications.
+\noindent \textbf{Point Mass Approximation:} All masses are treated as point particles with no rotational inertia or finite size effects. This simplification is appropriate for systems where the mass dimensions are small compared to the lattice spacing, but may not capture effects of finite particle size in some applications. \newline
 
-\textbf{Exponential Spring Model:} The exponential spring force law is a phenomenological model chosen for its mathematical tractability and ability to capture non-linear behavior. While it provides a reasonable approximation for many materials, real material behavior may differ, particularly under extreme deformations.
+\noindent \textbf{Exponential Spring Model:} The exponential spring force law is a phenomenological model chosen for its mathematical tractability and ability to capture non-linear behavior. While it provides a reasonable approximation for many materials, real material behavior may differ, particularly under extreme deformations. \newline
 
-\textbf{Linear Damping:} Viscous damping assumes a linear relationship between damping force and relative velocity. Real materials may exhibit non-linear damping behavior, frequency-dependent damping, or other dissipation mechanisms not captured by this model.
+\noindent \textbf{Linear Damping:} Viscous damping assumes a linear relationship between damping force and relative velocity. Real materials may exhibit non-linear damping behavior, frequency-dependent damping, or other dissipation mechanisms not captured by this model. \newline
 
-\textbf{Two-Dimensional Motion:} The system is constrained to two-dimensional motion in a plane. Three-dimensional effects, out-of-plane motion, and torsional dynamics are not considered.
+\noindent \textbf{Two-Dimensional Motion:} The system is constrained to two-dimensional motion in a plane. Three-dimensional effects, out-of-plane motion, and torsional dynamics are not considered. \newline
 
-\textbf{Constant Material Properties:} Material properties (spring constants, damping coefficients) are assumed constant and independent of deformation, temperature, or other factors. Real materials may exhibit property variations under different conditions.
+\noindent \textbf{Constant Material Properties:} Material properties (spring constants, damping coefficients) are assumed constant and independent of deformation, temperature, or other factors. Real materials may exhibit property variations under different conditions. \newline
 
 \subsection{Numerical Limitations}
 
-\textbf{Discretization:} The continuous-time ODE system is solved using discrete time steps. While adaptive time stepping maintains accuracy, very high-frequency modes may not be fully resolved if they occur on time scales smaller than the minimum step size.
+\noindent \textbf{Discretization:} The continuous-time ODE system is solved using discrete time steps. While adaptive time stepping maintains accuracy, very high-frequency modes may not be fully resolved if they occur on time scales smaller than the minimum step size. \newline
 
-\textbf{Tolerance Settings:} The solver tolerances (reltol = $10^{-12}$, abstol = $10^{-14}$) provide high accuracy but may be more stringent than necessary for some applications. Coarser tolerances could reduce computation time but may affect energy balance accuracy.
+\noindent \textbf{Tolerance Settings:} The solver tolerances (reltol = $10^{-12}$, abstol = $10^{-14}$) provide high accuracy but may be more stringent than necessary for some applications. Coarser tolerances could reduce computation time but may affect energy balance accuracy. \newline
 
-\textbf{Finite Simulation Time:} Simulations run for 8 seconds, which may not capture all long-time behavior. Some slow dynamics or equilibrium approach may require longer simulation times.
+\noindent \textbf{Finite Simulation Time:} Simulations run for 8 seconds, which may not capture all long-time behavior. Some slow dynamics or equilibrium approach may require longer simulation times. \newline
 
 \subsection{Computational Constraints}
 
-\textbf{System Size:} The 11×11 lattice (242 DOF) is computationally manageable but represents a compromise between detail and computational cost. Larger systems would provide more spatial resolution but require significantly more computation time.
+\noindent \textbf{System Size:} The 11×11 lattice (242 DOF) is computationally manageable but represents a compromise between detail and computational cost. Larger systems would provide more spatial resolution but require significantly more computation time. \newline
 
-\textbf{Optimization Budget:} With only 100-102 function evaluations per optimizer, the search space ($11! = 39.9$ million permutations) is only partially explored. More evaluations could potentially find better solutions but would require longer computation time.
+\noindent \textbf{Optimization Budget:} With only 100-102 function evaluations per optimizer, the search space ($11! = 39.9$ million permutations) is only partially explored. More evaluations could potentially find better solutions but would require longer computation time. \newline
 
-\textbf{Single Run Statistics:} Results are based on single optimization runs for each algorithm. Multiple independent runs would provide statistical confidence intervals and allow significance testing, but would multiply the computational cost.
+\noindent \textbf{Single Run Statistics:} Results are based on single optimization runs for each algorithm. Multiple independent runs would provide statistical confidence intervals and allow significance testing, but would multiply the computational cost. \newline
 
 \subsection{Boundary Condition Simplifications}
 
-\textbf{Rigid Backplate:} The backplate is modeled as perfectly rigid and immovable. Real protective systems may have finite stiffness, compliance, or other boundary characteristics that affect force transfer.
+\noindent \textbf{Rigid Backplate:} The backplate is modeled as perfectly rigid and immovable. Real protective systems may have finite stiffness, compliance, or other boundary characteristics that affect force transfer. \newline
 
-\textbf{Free Top and Bottom Edges:} The top and bottom edges of the lattice are free (no constraints). Some applications may involve constrained or periodic boundary conditions that would affect system behavior.
+\noindent \textbf{Free Top and Bottom Edges:} The top and bottom edges of the lattice are free (no constraints). Some applications may involve constrained or periodic boundary conditions that would affect system behavior. \newline
 
-\textbf{Distributed Load Approximation:} The distributed load uses a trapezoidal distribution pattern. Different force distributions (uniform, Gaussian, etc.) may produce different results.
+\noindent \textbf{Distributed Load Approximation:} The distributed load uses a trapezoidal distribution pattern. Different force distributions (uniform, Gaussian, etc.) may produce different results. \newline
 
 \subsection{Material Property Assumptions}
 
-\textbf{Fixed Material Set:} The study uses a fixed set of 11 materials with a specific scaling pattern ($(2/3)^{i-1}$). Different material sets or scaling patterns may yield different optimal orderings.
+\noindent \textbf{Fixed Material Set:} The study uses a fixed set of 11 materials with a specific scaling pattern ($(2/3)^{i-1}$). Different material sets or scaling patterns may yield different optimal orderings. \newline
 
-\textbf{Column-Based Properties:} Material properties are assigned column-wise, meaning all masses in a column share the same properties. More granular property assignment (e.g., mass-by-mass) could provide additional optimization flexibility but would dramatically increase the search space.
+\noindent \textbf{Column-Based Properties:} Material properties are assigned column-wise, meaning all masses in a column share the same properties. More granular property assignment (e.g., mass-by-mass) could provide additional optimization flexibility but would dramatically increase the search space. \newline
 
-\textbf{No Property Optimization:} Material properties themselves are not optimized, only their ordering. Simultaneous optimization of properties and ordering would be a more complex problem.
+\noindent \textbf{No Property Optimization:} Material properties themselves are not optimized, only their ordering. Simultaneous optimization of properties and ordering would be a more complex problem.
 
 \section{Future Work}
 
-Based on the limitations identified above, several directions for future work are suggested:
+\noindent Based on the limitations identified above, several directions for future work are suggested:
 
 \begin{itemize}
     \item \textbf{Evaluation Budget}: With only 100 evaluations, we may not have fully explored the search space. Increasing to 200-500 evaluations could yield better solutions.
@@ -1105,7 +1105,7 @@ Based on the limitations identified above, several directions for future work ar
 
 \subsection{System Specifications}
 
-The optimization runs were conducted on a system with the following characteristics:
+\noindent The optimization runs were conducted on a system with the following characteristics:
 \begin{itemize}
     \item \textbf{Processor}: Apple M1 chip
     \item \textbf{Parallel execution}: All optimizers ran in parallel using Julia's task-based parallelism
@@ -1115,7 +1115,7 @@ The optimization runs were conducted on a system with the following characterist
 
 \subsection{Time Breakdown}
 
-The total computation time can be decomposed into simulation time and optimizer overhead:
+\noindent The total computation time can be decomposed into simulation time and optimizer overhead:
 \begin{itemize}
     \item \textbf{Simulation time per evaluation}: Approximately 2-4 minutes per evaluation, depending on the specific material ordering and resulting dynamics. Each simulation solves a 242-DOF system for 8 seconds with adaptive time-stepping.
     \item \textbf{Optimizer overhead}: Varies significantly by algorithm:
@@ -1135,11 +1135,11 @@ The total computation time can be decomposed into simulation time and optimizer 
 \section{Conclusions}
 \label{sec:conclusions}
 
-This work presents a comprehensive study of mass-spring lattice systems for impact mitigation applications, combining detailed mathematical formulation, numerical analysis, and optimization. The research provides both fundamental insights into system dynamics and practical solutions for material ordering optimization.
+\noindent This work presents a comprehensive study of mass-spring lattice systems for impact mitigation applications, combining detailed mathematical formulation, numerical analysis, and optimization. The research provides both fundamental insights into system dynamics and practical solutions for material ordering optimization.
 
 \subsection{Physical Findings}
 
-The dynamic analysis reveals several important physical phenomena:
+\noindent The dynamic analysis reveals several important physical phenomena:
 
 \begin{enumerate}
     \item \textbf{Wave Propagation}: Mechanical waves propagate from the impact site across the lattice, with propagation speed depending on material properties. The heterogeneous material distribution creates impedance variations that affect wave scattering and mode conversion.
@@ -1153,7 +1153,7 @@ The dynamic analysis reveals several important physical phenomena:
 
 \subsection{Numerical Validation}
 
-The numerical solution approach has been validated through:
+\noindent The numerical solution approach has been validated through:
 
 \begin{enumerate}
     \item \textbf{Energy Balance Verification}: The work-energy theorem is satisfied to high accuracy (relative error $< 0.01\%$), confirming correct energy accounting and numerical integration accuracy.
@@ -1165,7 +1165,7 @@ The numerical solution approach has been validated through:
 
 \subsection{Optimization Achievements}
 
-The material ordering optimization successfully:
+\noindent The material ordering optimization successfully:
 
 \begin{enumerate}
     \item \textbf{Problem Formulation}: Formulated the discrete permutation problem and implemented continuous encoding to enable use of standard optimization algorithms.
@@ -1181,7 +1181,7 @@ The material ordering optimization successfully:
 
 \subsection{Broader Implications}
 
-This research contributes to several areas:
+\noindent This research contributes to several areas:
 
 \begin{enumerate}
     \item \textbf{Protective System Design}: Demonstrates that strategic material ordering can significantly reduce peak force transfer, with direct applications to armor systems, impact protection, and safety equipment.
@@ -1195,7 +1195,7 @@ This research contributes to several areas:
 
 \subsection{Key Contributions}
 
-The primary contributions of this work include:
+\noindent The primary contributions of this work include:
 
 \begin{enumerate}
     \item Comprehensive mathematical formulation of mass-spring lattice systems from simple two-mass systems to complex 11×11 lattices
@@ -1208,7 +1208,7 @@ The primary contributions of this work include:
 
 \subsection{Future Directions}
 
-Future work will focus on:
+\noindent Future work will focus on:
 \begin{itemize}
     \item Increasing optimization evaluation budgets to more fully explore the search space
     \item Exploring multi-objective optimization (e.g., peak force and material cost)
@@ -1273,7 +1273,7 @@ Future work will focus on:
 
 \section{Acknowledgments}
 
-Research conducted in collaboration with Dr. Romesh Batra, Department of Mechanical Engineering, Virginia Tech.
+\noindent Research conducted in collaboration with Dr. Romesh Batra, Department of Mechanical Engineering, Virginia Tech.
 
 \end{document}
 
