@@ -37,75 +37,75 @@ morestring=[s]{"}{"},%
 morestring=[m]{'}{'},%
 }[keywords,comments,strings]%
 
-\title{Optimization of Material Ordering for Peak Force Minimization in Mass-Spring Lattice Systems}
+\title{Optimization of Blast-Loaded Sandwich Plates Using a Spring-Mass Model}
 \author{Daniel Miles\\Research Advisor: Dr. Romesh Batra}
-\date{January 27, 2026}
+\date{March 25, 2026}
 
 \begin{document}
 
 \maketitle
 
 \begin{abstract}
-\noindent This work presents a comprehensive study of mass-spring lattice systems for impact mitigation applications, with particular focus on armor systems where peak force transfer determines injury thresholds and penetration risk. We develop and analyze an 11×11 two-dimensional mass-spring lattice system (121 masses, 242 degrees of freedom) featuring exponential spring models, viscous damping, and an immovable backplate constraint. The system is subjected to distributed external loading, and the dynamic response is solved using high-order numerical integration methods. Energy balance verification confirms the accuracy of the numerical solution, with work-energy relationships properly accounting for energy dissipation through damping mechanisms. The study investigates the effect of material property ordering on peak force transfer to the backplate, motivated by the need to optimize protective system configurations. We formulate the material ordering as a permutation optimization problem and implement six optimization algorithms from three Julia packages: Metaheuristics.jl (Differential Evolution, Particle Swarm Optimization, Evolutionary Centers Algorithm, Genetic Algorithm), BlackBoxOptim.jl (Adaptive Differential Evolution), and Optim.jl (Simulated Annealing). All algorithms were evaluated with 100-102 function evaluations, where each evaluation requires a full 8-second simulation. Results demonstrate that BlackBoxOptim achieved the best solution (1497.89 N), representing a 48.6\% reduction compared to the worst performer and a 14.3\% improvement over a simple sequential ordering heuristic. Metaheuristics\_PSO provided the best balance between solution quality and computation time. The study reveals that optimal material orderings consistently place the stiffest material near the impact side, with softer materials distributed in later columns, suggesting that material interaction and wave propagation effects create complex dependencies that require optimization rather than simple heuristics. The comprehensive analysis provides insights into wave propagation dynamics, energy dissipation mechanisms, and the relationship between material ordering and force transfer characteristics in heterogeneous lattice systems.
+\noindent We use a spring-mass system to analyze transient deformations of a sandwich plate impact loaded on the top surface. It is assumed that each layer can be simulated as an assembly of an 11×11 spring-mass-dashpot system. We develop and analyze an 11×11 two-dimensional spring-mass-dashpot network (121 masses, 242 degrees of freedom) featuring springs with exponential force--stretch relations, viscous damping, and an immovable backplate constraint. The system is subjected to distributed external loading, and the dynamic response is solved using higher-order numerical integration methods. Energy balance verification is used to confirm numerical solution quality, with work--energy relationships accounting for energy dissipation through damping. We then study how the ordering of core layers affects the peak force transferred to the back surface, motivated by the need to optimize protective sandwich-plate configurations. We formulate the layer ordering as a permutation optimization problem and implement six optimization algorithms in Julia (Metaheuristics.jl, BlackBoxOptim.jl, and Optim.jl). With 100--102 function evaluations (each requiring a full transient simulation), we obtain configurations that reduce the peak transmitted force relative to simple baseline orderings. Expected end-of-semester outcomes include a verified spring-mass-dashpot model for a representative impact loading scenario, a documented optimization workflow for layer ordering, and a consolidated report describing the governing equations, verification, and optimization results.
 \end{abstract}
 
 \section{Introduction}
 
-\noindent Mass-spring lattice systems serve as fundamental models for understanding wave propagation, energy dissipation, and dynamic response in complex material structures. These systems find applications across numerous engineering domains, including impact mitigation, seismic wave analysis, and protective system design. In particular, armor systems such as Kevlar vests and composite protective panels rely on the strategic arrangement of materials with varying mechanical properties to minimize force transfer and prevent injury or penetration. \newline
+\noindent Mass-spring systems serve as fundamental models for understanding wave propagation, energy dissipation, and dynamic response in material structures. These systems find applications across numerous engineering domains, including impact mitigation, seismic wave analysis, and protective system design. In particular, sandwich structures and composite protective panels rely on the strategic arrangement of core layers with varying mechanical properties to minimize force transfer and mitigate damage. \newline
 
-\noindent This work presents a comprehensive study of a two-dimensional mass-spring lattice system designed to model impact scenarios relevant to protective applications. The system employs exponential spring models to capture non-linear material behavior, viscous damping to account for energy dissipation, and boundary constraints to represent realistic loading conditions. Through detailed mathematical formulation, numerical analysis, and optimization, we investigate how material ordering affects force transfer characteristics in heterogeneous lattice structures. \newline
+\noindent This work presents a comprehensive study of a two-dimensional spring-mass-dashpot system to analyze transient deformations of a sandwich structure comprised of eight foam layers and two face sheets. Each layer is modeled as an 11×11 spring-mass-dashpot assembly, and the overall objective is to determine the force transferred to the back surface. Through detailed mathematical formulation, numerical analysis, and optimization, we investigate how layer ordering affects the peak force transmitted to the back surface. \newline
 
-\noindent The primary motivation for this research stems from armor applications where peak force magnitude is the critical metric determining injury thresholds and penetration risk. Unlike average force or total energy, peak force represents the worst-case loading scenario that can cause catastrophic failure or severe injury. By optimizing the spatial arrangement of materials with different mechanical properties (stiffness, damping), we can significantly reduce the maximum force experienced by the protected surface, thereby improving system performance and safety. \newline
+\noindent The primary motivation for this research is that peak transmitted force is a critical metric in impact loading, because it represents a worst-case loading scenario that can drive failure of constituent layers or the overall structure. By optimizing the ordering of core layers with different stiffness and damping properties, we can reduce the maximum force transmitted to a rigid substrate bonded to the back face, thereby improving impact resistance for a given areal mass density. \newline
 
 \noindent The research objectives of this work include:
 \begin{enumerate}
-    \item Developing a comprehensive mathematical formulation of mass-spring lattice systems, starting from simple two-mass systems and progressing to complex 11×11 lattices
-    \item Implementing and validating numerical solution methods for the resulting system of ordinary differential equations
-    \item Verifying solution accuracy through energy balance analysis and work-energy relationships
-    \item Analyzing dynamic response characteristics including wave propagation, energy dissipation, and force transfer
-    \item Formulating and solving the material ordering optimization problem to minimize peak backplate force
-    \item Comparing multiple optimization algorithms to identify effective solution strategies
-    \item Extracting physical insights about material interactions and wave propagation effects
+    \item Developing a comprehensive mathematical formulation for spring-mass-dashpot representations of sandwich-plate layers, starting from simple spring-mass systems and progressing to an 11×11 spring-mass-dashpot assembly
+    \item Implementing and validating numerical solution methods for the resulting coupled system of ordinary differential equations
+    \item Verifying solution accuracy through energy balance analysis and work--energy relationships
+    \item Analyzing transient response characteristics including wave propagation, energy dissipation, and transmitted-force histories
+    \item Formulating and solving a layer ordering optimization problem to minimize the peak force transmitted to the back surface
+    \item Comparing multiple optimization algorithms to identify effective solution strategies for the permutation search space
+    \item Extracting physical insights about layer interactions and wave propagation effects that influence peak transmitted force
 \end{enumerate}
 
 \subsection{Background and Literature Context}
 
-Mass-spring systems have been extensively studied in classical mechanics, materials science, and computational physics. Linear spring-mass systems follow Hooke's law and exhibit well-understood oscillatory behavior. However, many real materials exhibit non-linear force-displacement relationships, particularly under large deformations. Exponential spring models provide a framework for capturing such non-linear behavior while maintaining analytical tractability. \newline
+Mass-spring systems have been extensively studied in classical mechanics, materials science, and computational physics. Linear spring-mass systems follow Hooke's law and exhibit well-understood oscillatory behavior. However, many real materials exhibit non-linear force--displacement relationships, particularly under large deformations. Springs with exponential force--stretch relations provide a framework for capturing such non-linear behavior while maintaining analytical tractability. \newline
 
 \noindent Lattice systems, where masses are arranged in regular grids and connected by springs, have been used to model various physical phenomena including phonon propagation in crystals, wave propagation in granular media, and dynamic response of composite materials. The addition of damping mechanisms is essential for modeling realistic systems where energy dissipation occurs through material internal friction, air resistance, or other mechanisms. \newline
 
-\noindent In the context of protective systems, previous research has investigated material layering strategies, gradient materials, and hierarchical structures. However, the optimization of material ordering in discrete lattice systems with non-linear springs and distributed loading remains relatively unexplored. This work contributes to this area by providing a comprehensive framework for analysis and optimization. \newline
+\noindent In the context of protective systems, previous research has investigated material layering strategies, gradient materials, and hierarchical structures. Representative examples include studies of woven and shear-thickening fabric armor systems and composite protective panels (e.g., Cunniff (1992); Tan et al. (2005)). Here we use a lattice system to simulate the dynamic response of foam and fiber-reinforced composite layers subjected to an impact force. \newline
 
-\noindent Numerical methods for solving large systems of ordinary differential equations have advanced significantly with modern computational tools. High-order Runge-Kutta methods, such as the Vern9 algorithm used in this work, provide excellent accuracy and stability for stiff and non-stiff systems. The Julia programming language and its DifferentialEquations.jl package offer efficient implementations of these methods, enabling the simulation of large-scale systems with hundreds of degrees of freedom. \newline
+\noindent Numerical methods for solving large systems of ordinary differential equations have advanced significantly with modern computational tools. Higher-order Runge-Kutta methods, such as the Vern9 algorithm used in this work, provide excellent accuracy and stability for stiff and non-stiff systems. The Julia programming language and its DifferentialEquations.jl package offer efficient implementations of these methods, enabling the simulation of large-scale systems with hundreds of degrees of freedom. \newline
 
 \noindent Optimization of discrete permutation problems presents unique challenges, as gradient-based methods are inapplicable and the search space grows factorially with problem size. Metaheuristic algorithms, including evolutionary algorithms, particle swarm optimization, and simulated annealing, have proven effective for such problems. This work compares multiple such algorithms to identify the most suitable approach for the material ordering problem.
 
 \section{Problem Formulation}
 \label{sec:problem_formulation}
 
-\noindent This section develops the mathematical formulation of the mass-spring lattice system, beginning with simple two-mass systems and progressively building complexity to the full 11×11 lattice. We start with fundamental spring-mass systems to establish the theoretical foundation, then extend to lattice structures with multiple masses, non-linear springs, damping, and boundary constraints.
+\noindent This section develops the mathematical formulation of the spring-mass system, beginning with simple two-mass systems and progressively building complexity to the full 11×11 system.
 
 \subsection{Simple Two-Mass Spring Systems}
 
-\noindent To establish the theoretical foundation, we first consider simple two-mass systems connected by springs. These systems illustrate the fundamental principles that extend to larger lattices.
+\noindent We first consider a simple two-mass system connected by a spring, shown in Fig.~\ref{fig:two_mass_system}.
 
 \begin{figure}[h]
 \centering
 \includegraphics[width=0.7\textwidth]{../figures/two_mass_spring_system.png}
-\caption{Schematic of a two-mass spring system. Two point masses $m_1$ and $m_2$ are connected by a spring with spring constant $k$ and exponential parameter $\alpha$. The system moves in two dimensions with positions $\mathbf{x}_1$ and $\mathbf{x}_2$ and velocities $\mathbf{v}_1$ and $\mathbf{v}_2$.}
+\caption{Schematic of a two-mass spring system. Two point masses $m_1$ and $m_2$ are connected by a spring with spring constant $k$ and exponential parameter $\alpha$ (see Eq.~\ref{eq:exponential_force}). The motion is restricted to the $x_1$--$x_2$ plane, with the positions of masses 1 and 2 denoted by $\mathbf{x}_1$ and $\mathbf{x}_2$, respectively.}
 \label{fig:two_mass_system}
 \end{figure}
 
 \subsubsection{Linear Spring System}
 
-\noindent Consider two point masses $m_1$ and $m_2$ connected by a linear spring with spring constant $k$ in two dimensions. The masses have positions $\mathbf{x}_1 = [x_1, y_1]^T$ and $\mathbf{x}_2 = [x_2, y_2]^T$, and velocities $\mathbf{v}_1 = [v_{x1}, v_{y1}]^T$ and $\mathbf{v}_2 = [v_{x2}, v_{y2}]^T$. \newline
+\noindent Consider a simple system of two point masses $m_1$ and $m_2$ connected by a linear spring with spring constant $k$ in two dimensions. The masses have positions $\mathbf{x}_1 = [x_1, y_1]^T$ and $\mathbf{x}_2 = [x_2, y_2]^T$, and velocities $\mathbf{v}_1 = [v_{x1}, v_{y1}]^T$ and $\mathbf{v}_2 = [v_{x2}, v_{y2}]^T$. In our numerical implementation, $\mathbf{x}_i$ denotes displacement from equilibrium, so the spring stretch is computed from the relative displacement magnitude $|\mathbf{x}_2 - \mathbf{x}_1|$. \newline
 
 \noindent \textbf{Assumptions:}
 \begin{itemize}
     \item Masses are point particles with no rotational inertia
     \item Spring is massless and follows Hooke's law
     \item No external forces except those explicitly applied
-    \item Two-dimensional motion (masses constrained to a plane) \newline
+    \item Two-dimensional motion (masses move in a plane) \newline
 \end{itemize}
 
 \noindent \textbf{Free-Body Diagrams:}
@@ -168,7 +168,7 @@ m_1 \frac{dv_{y1}}{dt} &= -k(y_1 - y_2) + F_{ext,1,y} \\
 
 \subsubsection{Non-Linear (Exponential) Spring System}
 
-\noindent We now extend the system to use an exponential spring model, which better captures non-linear material behavior under large deformations. The exponential spring force law is:
+\noindent We now extend the system to use an exponential spring model to capture non-linear material behavior under large deformations. The exponential spring force law is:
 
 \begin{equation}
 \mathbf{F}_{spring} = k \frac{\mathbf{r}}{|\mathbf{r}|} \left( e^{\alpha |\mathbf{r}|} - 1 \right)
@@ -181,8 +181,8 @@ m_1 \frac{dv_{y1}}{dt} &= -k(y_1 - y_2) + F_{ext,1,y} \\
 
 \noindent The exponential form $e^{\alpha |\mathbf{r}|} - 1$ ensures that:
 \begin{itemize}
-    \item For small displacements: $e^{\alpha |\mathbf{r}|} - 1 \approx \alpha |\mathbf{r}|$, so $F \approx k \alpha |\mathbf{r}|$, approximating linear behavior
-    \item For large displacements: The force grows exponentially, capturing material stiffening
+    \item For small extensions of the spring: $e^{\alpha |\mathbf{r}|} - 1 \approx \alpha |\mathbf{r}|$, so $F \approx (k \alpha)\,|\mathbf{r}|$, i.e., the effective linear spring constant is $k\alpha$
+    \item For large extensions of the spring: The force grows exponentially, capturing material stiffening
     \item The direction $\mathbf{r}/|\mathbf{r}|$ ensures the force acts along the line connecting the masses \newline
 \end{itemize}
 
