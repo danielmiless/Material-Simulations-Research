@@ -11,6 +11,8 @@ papers/
 ├── updates/          # Progress updates and interim reports
 │   ├── Batra_Update_10_20_2025.tex
 │   └── Batra_Update_7_23_25.pdf
+├── technical/        # Standalone technical notes (e.g. spring force derivation)
+│   └── spring_force_11x11.tex
 ├── figures/          # Figures and images used in papers
 │   └── initial_state.png
 ├── build/            # Build artifacts (aux, log, etc.) - gitignored
@@ -49,6 +51,14 @@ From the `papers/` directory:
 ```
 
 This ensures all build artifacts go to `build/` automatically.
+
+Technical notes under `technical/` are not wired into `compile.sh` (which copies PDFs to `updates/`). From the repository root, compile them with:
+
+```bash
+cd papers/technical && latexmk -pdf -output-directory=../build -aux-directory=../build spring_force_11x11.tex
+```
+
+The PDF is written to `papers/build/`; copy it elsewhere if you need it alongside the `.tex` source.
 
 ### Manual compilation with latexmk
 
