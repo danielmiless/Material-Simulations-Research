@@ -12,7 +12,8 @@ mkdir -p "$BUILD_DIR"
 # Check if a .tex file was provided
 if [ -z "$1" ]; then
     echo "Usage: ./compile.sh <paper-name.tex>"
-    echo "Example: ./compile.sh updates/Batra_Update_10_20_2025.tex"
+    echo "Example: ./compile.sh final-report/Final_Report.tex"
+    echo "         ./compile.sh updates/Batra_Update_10_20_2025.tex"
     exit 1
 fi
 
@@ -36,16 +37,15 @@ latexmk -pdf \
 
 # Check if compilation was successful
 if [ $? -eq 0 ]; then
-    # Copy PDF to updates directory
-    UPDATES_DIR="$SCRIPT_DIR/updates"
-    mkdir -p "$UPDATES_DIR"
-    cp "$BUILD_DIR/$PAPER_NAME.pdf" "$UPDATES_DIR/"
-    # Remove PDF from build directory after copying
+    # Copy PDF next to the source .tex (e.g. final-report/ or updates/)
+    DEST_DIR="$SCRIPT_DIR/$PAPER_DIR"
+    mkdir -p "$DEST_DIR"
+    cp "$BUILD_DIR/$PAPER_NAME.pdf" "$DEST_DIR/"
     rm "$BUILD_DIR/$PAPER_NAME.pdf"
-    
+
     echo ""
     echo "Compilation successful!"
-    echo "PDF location: $UPDATES_DIR/$PAPER_NAME.pdf"
+    echo "PDF location: $DEST_DIR/$PAPER_NAME.pdf"
     echo "PDF removed from build directory"
     echo "Build artifacts: $BUILD_DIR/"
 else

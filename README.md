@@ -73,6 +73,7 @@ Material-Simulations-Research/
 │   └── lattice_simulation_11x11.jl       # 11×11 with backplate, material scaling, and distributed load
 ├── docs/                    # Comprehensive documentation
 ├── papers/                  # LaTeX papers and research updates
+│   ├── final-report/       # Final report (Final_Report.tex / Final_Report.pdf)
 │   ├── updates/            # Progress updates
 │   ├── figures/            # Figures for papers
 │   └── build/              # LaTeX build artifacts (gitignored)

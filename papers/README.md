@@ -8,6 +8,9 @@ The papers directory is organized as follows:
 
 ```
 papers/
+├── final-report/     # Final report (consolidated manuscript + PDF)
+│   ├── Final_Report.tex
+│   └── Final_Report.pdf
 ├── updates/          # Progress updates and interim reports
 │   ├── Batra_Update_10_20_2025.tex
 │   └── Batra_Update_7_23_25.pdf
@@ -22,10 +25,10 @@ papers/
 ## Naming Convention
 
 Use descriptive names with dates:
-- `Batra_Update_MM_DD_YYYY.tex` for progress updates to Dr. Batra
+- **`final-report/Final_Report.tex`** — primary final manuscript (PDF: `Final_Report.pdf`)
+- `Batra_Update_MM_DD_YYYY.tex` for dated progress updates to Dr. Batra
 - `update-YYYY-MM-DD.tex` for general progress updates
 - `draft-YYYY-MM-DD.tex` for draft papers
-- `paper-title.tex` for final papers
 
 ## LaTeX Template
 
@@ -47,18 +50,19 @@ When creating new papers, consider including:
 From the `papers/` directory:
 
 ```bash
+./compile.sh final-report/Final_Report.tex
 ./compile.sh updates/Batra_Update_10_20_2025.tex
 ```
 
-This ensures all build artifacts go to `build/` automatically.
+The script places the output PDF in the **same folder as the `.tex` file** (e.g. `final-report/` or `updates/`). Build artifacts go to `build/`.
 
-Technical notes under `technical/` are not wired into `compile.sh` (which copies PDFs to `updates/`). From the repository root, compile them with:
+Technical notes under `technical/` are usually compiled with `latexmk` directly (see below). From the repository root:
 
 ```bash
 cd papers/technical && latexmk -pdf -output-directory=../build -aux-directory=../build spring_force_11x11.tex
 ```
 
-The PDF is written to `papers/build/`; copy it elsewhere if you need it alongside the `.tex` source.
+The PDF is written to `papers/build/` unless you copy it next to the `.tex` source yourself.
 
 ### Manual compilation with latexmk
 
@@ -85,15 +89,14 @@ pdflatex -output-directory=../build Batra_Update_10_20_2025.tex  # Run twice for
 
 If you're using VS Code with the LaTeX Workshop extension, the build button (green play button) is configured to:
 - Send all build artifacts (`.aux`, `.log`, etc.) to `papers/build/`
-- Automatically copy the generated PDF to `papers/updates/` after successful compilation
+- Optionally copy the generated PDF next to the `.tex` file after successful compilation
 
 The configuration is in `.vscode/settings.json` and includes:
 - Output directory set to `../build` relative to the `.tex` file
 - Auxiliary directory set to match output directory
-- Post-build script that copies PDFs to `updates/` directory
-- Automatic cleanup of build files from source directories
+- Post-build behavior for PDF placement (adjust if you build from `final-report/` vs `updates/`)
 
-**Note**: The `.latexmkrc` files in `papers/` and `papers/updates/` directories are configured to automatically use the `build/` directory. The VS Code settings work together with these to ensure build files go to `build/` and PDFs are automatically copied to `updates/`.
+**Note**: The `.latexmkrc` files under `papers/`, `papers/updates/`, and `papers/final-report/` point outputs at `papers/build/`. If your editor copies PDFs only to `updates/`, update it when working in `final-report/`, or use `./compile.sh final-report/Final_Report.tex` from the command line.
 
 ### Compiling with figure paths:
 

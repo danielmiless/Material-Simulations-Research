@@ -1,0 +1,132 @@
+% =============================================================================
+% Meeting handout: geometric spring correction (theory + code changes)
+%
+% Compile:
+%   cd papers/technical && latexmk -pdf -output-directory=../build -aux-directory=../build spring_force_geometric_fix_note.tex
+% =============================================================================
+%
+% Purpose: very brief, professor-facing note explaining
+% (1) what was wrong with the prior displacement-based direction,
+% (2) the corrected geometric formulation, and
+% (3) concrete code changes needed to match the corrected formulation.
+%
+% This file is intentionally short.
+% =============================================================================
+
+\documentclass[11pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage[margin=1in]{geometry}
+\usepackage{hyperref}
+\usepackage{booktabs}
+\usepackage{microtype}
+\usepackage{parskip}
+\usepackage{enumitem}
+\usepackage{tcolorbox}
+\tcbuselibrary{breakable}
+
+\setlist{itemsep=0.25em, topsep=0.25em}
+
+\newtcolorbox{takeaway}{colback=gray!7,colframe=gray!55,boxrule=0.6pt,arc=2pt,left=7pt,right=7pt,top=6pt,bottom=6pt,breakable}
+
+\title{\textbf{Geometric spring-force correction (meeting note)}}
+\author{Daniel Miles}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\section{What the feedback means (one sentence)}
+A physical spring force should act along the \emph{current line connecting its endpoints} (the deformed chord), but our previous write-up/code used the \emph{relative displacement} vector to set the force direction, which can point in a different direction under shear-like motion.
+
+\section{The key distinction}
+Let a bond connect nodes $A$ and $B$.
+
+\textbf{Reference (undeformed) geometry:}
+\[
+\mathbf{X}_A^{eq},\ \mathbf{X}_B^{eq},\qquad \mathbf{R}_0 = \mathbf{X}_B^{eq}-\mathbf{X}_A^{eq},\qquad L_0 = \|\mathbf{R}_0\|.
+\]
+
+\textbf{Displacements stored by the solver:}
+\[
+\mathbf{u}_A,\mathbf{u}_B,\qquad \mathbf{X}_A=\mathbf{X}_A^{eq}+\mathbf{u}_A,\quad \mathbf{X}_B=\mathbf{X}_B^{eq}+\mathbf{u}_B.
+\]
+
+\textbf{Current (deformed) chord in space:}
+\begin{equation}
+\mathbf{R}=\mathbf{X}_B-\mathbf{X}_A=\mathbf{R}_0 + (\mathbf{u}_B-\mathbf{u}_A),\qquad L=\|\mathbf{R}\|,\qquad \hat{\mathbf{R}}=\mathbf{R}/L.
+\label{eq:Rdef}
+\end{equation}
+
+\textbf{What we previously used:}
+\[
+\mathbf{r}_{old}=\mathbf{u}_B-\mathbf{u}_A,\qquad \hat{\mathbf{r}}_{old}=\mathbf{r}_{old}/\|\mathbf{r}_{old}\|.
+\]
+
+\begin{takeaway}
+\textbf{Why the professor's counterexample works.} If the reference bond is horizontal ($\mathbf{R}_0=\hat{\mathbf{i}}$) but only $B$ moves up ($\mathbf{u}_B=\hat{\mathbf{j}}$), then $\mathbf{R}=\hat{\mathbf{i}}+\hat{\mathbf{j}}$ (45$^\circ$), while $\mathbf{r}_{old}=\hat{\mathbf{j}}$ (90$^\circ$). A geometric spring must push/pull along $\hat{\mathbf{R}}$, not along $\hat{\mathbf{r}}_{old}$.
+\end{takeaway}
+
+\section{Corrected spring force (geometric)}
+Define the scalar extension/compression
+\begin{equation}
+s = L - L_0.
+\label{eq:sdef}
+\end{equation}
+
+One consistent exponential analogue of Hooke's law is
+\begin{equation}
+\mathbf{F}_{A\leftarrow B} = k\left(e^{\alpha s}-1\right)\hat{\mathbf{R}}.
+\label{eq:Fgeo}
+\end{equation}
+
+Notes:
+\begin{itemize}
+  \item For small $|s|$, $e^{\alpha s}-1\approx \alpha s$, so $F\approx (k\alpha)s$.
+  \item If $s<0$ (compression), then $e^{\alpha s}-1<0$ and the force reverses direction, as expected.
+  \item The direction is always along the current chord $\hat{\mathbf{R}}$ (geometrically consistent).
+\end{itemize}
+
+\section{What must change in the write-up}
+In \texttt{papers/technical/spring\_force\_11x11.pdf}, the spring section should be revised so that:
+\begin{itemize}
+  \item the vector used for direction is $\mathbf{R}$ in Eq.~\eqref{eq:Rdef}, not $\mathbf{u}_B-\mathbf{u}_A$;
+  \item the scalar ``stretch'' entering the exponential is $s=L-L_0$ in Eq.~\eqref{eq:sdef} (or an equivalent measure), not $d=\|\mathbf{u}_B-\mathbf{u}_A\|$;
+  \item nearest-neighbor bonds use $L_0=\Delta$ and diagonal bonds use $L_0=\Delta\sqrt{2}$, where $\Delta$ is the grid spacing.
+\end{itemize}
+
+\section{What must change in the code (minimal, concrete)}
+Current behavior (in \texttt{src/lattice\_simulation\_11x11.jl}) computes the spring direction from \texttt{pos2-pos1}, where \texttt{pos} is the displacement state. To match Eq.~\eqref{eq:Fgeo} we must include the reference chord $\mathbf{R}_0$ for each neighbor link.
+
+\textbf{Minimal implementation strategy:}
+\begin{itemize}
+  \item In the neighbor loop (where we know whether a link is left/right/up/down/diagonal), define $\mathbf{R}_0$ from the neighbor offset:
+  \[
+  \mathbf{R}_0 =
+  \begin{cases}
+  [\pm\Delta,0]^T & \text{horizontal},\\
+  [0,\pm\Delta]^T & \text{vertical},\\
+  [\pm\Delta,\pm\Delta]^T & \text{diagonal},
+  \end{cases}
+  \qquad L_0=\|\mathbf{R}_0\|.
+  \]
+  \item Compute $\mathbf{R}=\mathbf{R}_0+(\mathbf{u}_B-\mathbf{u}_A)$, then $s=\|\mathbf{R}\|-L_0$, then apply Eq.~\eqref{eq:Fgeo}.
+  \item Replace the current call to \texttt{spring\_force\_2d(pos\_k, pos\_neighbor, k, alpha)} with a new routine such as \texttt{spring\_force\_2d\_geometric(uA,uB,R0,k,alpha)}.
+\end{itemize}
+
+\textbf{Also update:}
+\begin{itemize}
+  \item the spring potential-energy function to use $s$ and $L_0$ if you want energy checks consistent with the new dynamics;
+  \item any text in the manuscript that claims ``force acts along the line connecting the masses'' (this becomes true again once Eq.~\eqref{eq:Fgeo} is used).
+\end{itemize}
+
+\section{Suggested discussion points for the meeting (what to show)}
+\begin{itemize}
+  \item The one-line correction: ``use the deformed chord $\mathbf{R}=\mathbf{R}_0+(\mathbf{u}_B-\mathbf{u}_A)$ for direction, and $s=\|\mathbf{R}\|-L_0$ for the scalar input.''
+  \item The professor's $(4,4)$--$(5,4)$ example and the 45$^\circ$ chord.
+  \item A clear statement of what changes in simulation behavior: shear no longer produces a force direction unrelated to the actual spring axis.
+  \item Clarify whether the model should allow compression ($s<0$) with the same exponential law or whether you prefer a tension-only/contact-like behavior; Eq.~\eqref{eq:Fgeo} allows both.
+\end{itemize}
+
+\end{document}
+
