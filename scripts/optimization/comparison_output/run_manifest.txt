@@ -1,0 +1,8 @@
+timestamp: 2026-04-01 22:25:00
+git_commit: c98c2bfac0cb936f2d3f5c077fd0c0d98a0c1ebe
+julia_version: 1.11.6
+max_evaluations: 20
+threads: 1
+repo_root: /Users/danielmiles/Documents/School/Senior/Research/Material-Simulations-Research/
+OPT_COMPARISON_OUTPUT_DIR: /Users/danielmiles/Documents/School/Senior/Research/Material-Simulations-Research/scripts/optimization/comparison_output
+SKIP_COMPARISON_ANIMATION: false

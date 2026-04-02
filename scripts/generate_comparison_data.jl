@@ -71,7 +71,9 @@ function extract_energy_data(sol, total_work, has_backplate = false)
         
         ke = kinetic_energy_2d(vel)
         # Check which potential energy function is available
-        if has_backplate && isdefined(Main, :potential_energy_2d_with_diagonals_and_backplate)
+        if has_backplate && isdefined(Main, :potential_energy_2d_nn_backplate)
+            pe = potential_energy_2d_nn_backplate(pos)
+        elseif has_backplate && isdefined(Main, :potential_energy_2d_with_diagonals_and_backplate)
             pe = potential_energy_2d_with_diagonals_and_backplate(pos)
         else
             pe = potential_energy_2d_with_diagonals(pos)
@@ -161,18 +163,16 @@ function generate_lattice_snapshot(sol, equilibrium_grid, backplate_positions, t
     pos = reshape(view(sol.u[frame_idx], 1:TOTAL_DOF), 2, TOTAL_MASSES)
     current_positions = pos .+ equilibrium_grid
     
-    # Get spring connections
-    nearest_neighbor_connections, diagonal_connections = create_spring_connections_with_diagonals()
-    
-    # Plot springs
-    for (k1, k2) in nearest_neighbor_connections
+    nn_connections = Tuple{Int, Int}[]
+    for i in 1:N, j in 1:N-1
+        push!(nn_connections, (lattice_idx(i, j), lattice_idx(i, j+1)))
+    end
+    for i in 1:N-1, j in 1:N
+        push!(nn_connections, (lattice_idx(i, j), lattice_idx(i+1, j)))
+    end
+    for (k1, k2) in nn_connections
         spring_points = Point2f[current_positions[:, k1], current_positions[:, k2]]
         lines!(ax, spring_points, color = :blue, linewidth = 2)
-    end
-    
-    for (k1, k2) in diagonal_connections
-        spring_points = Point2f[current_positions[:, k1], current_positions[:, k2]]
-        lines!(ax, spring_points, color = :red, linewidth = 1.5)
     end
     
     # Plot backplate if present

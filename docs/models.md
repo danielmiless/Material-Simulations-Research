@@ -4,47 +4,32 @@ This document provides detailed descriptions of the mathematical models implemen
 
 ## Exponential Spring Model
 
-### Force Law
+### 11×11 production model: geometric chord stretch
 
-The exponential spring model uses a force law that grows exponentially with displacement:
+In `src/lattice_simulation_11x11.jl`, each bond uses equilibrium chord $\mathbf{R}_0 = \mathbf{X}_B^{\mathrm{eq}} - \mathbf{X}_A^{\mathrm{eq}}$, nodal displacements $\mathbf{u}_A,\mathbf{u}_B$, deformed chord $\mathbf{R} = \mathbf{R}_0 + (\mathbf{u}_B - \mathbf{u}_A)$, stretch $s = |\mathbf{R}| - |\mathbf{R}_0|$, and force on $A$ due to $B$
+
+$$\mathbf{F} = k\left(e^{\alpha s} - 1\right)\hat{\mathbf{R}}, \quad \hat{\mathbf{R}} = \mathbf{R}/|\mathbf{R}|.$$
+
+**Potential energy** (summed over horizontal and vertical NN bonds, with the same $(k,\alpha)$ routing as the RHS):
+
+$$U(s) = \frac{k}{\alpha}\left(e^{\alpha s} - \alpha s - 1\right).$$
+
+Only nearest-neighbor (horizontal and vertical) springs are used; diagonal springs are not in the dynamics or PE. Material tuples may still carry unused `k_diagonal` / `alpha_diagonal` fields for API compatibility with optimizers.
+
+### Legacy: displacement-from-origin exponential (deprecated scripts)
+
+Some older scripts used the force law in terms of $|\mathbf{r}|$ with $\mathbf{r}$ as the vector between instantaneous positions only (no $\mathbf{R}_0$). That form is **not** what the 11×11 file implements today.
 
 $$F = k \frac{\mathbf{r}}{|\mathbf{r}|} \left( e^{\alpha |\mathbf{r}|} - 1 \right)$$
 
 **Parameters**:
 - $k$: Spring constant (units: N)
-- $\alpha$: Exponential decay rate (units: m⁻¹)
-- $\mathbf{r} = \mathbf{x}_2 - \mathbf{x}_1$: Displacement vector from mass 1 to mass 2
+- $\alpha$: Exponential rate (units: m⁻¹)
+- $\mathbf{r}$: separation vector in that legacy convention
 
-**Characteristics**:
-- For small displacements: Approximates linear spring ($F \approx k \alpha |\mathbf{r}|$)
-- For large displacements: Force grows exponentially
-- Direction: Force points along the displacement vector
-
-### Potential Energy
-
-The potential energy stored in an exponential spring is:
+**Potential energy** in the same legacy convention:
 
 $$U = \frac{k}{\alpha} \left( e^{\alpha |\mathbf{r}|} - \alpha |\mathbf{r}| - 1 \right)$$
-
-This ensures that $F = -\nabla U$.
-
-### Implementation
-
-```julia
-function spring_force_2d(pos1, pos2, k, alpha)
-    displacement = pos2 - pos1
-    distance = norm(displacement)
-    
-    if distance < 1e-12
-        return zeros(2)  # Avoid division by zero
-    end
-    
-    direction = displacement / distance
-    force_magnitude = k * (exp(alpha * distance) - 1.0)
-    
-    return force_magnitude * direction
-end
-```
 
 ## Linear Spring Model
 
@@ -106,15 +91,13 @@ The system uses a square lattice with:
 - **Nearest Neighbors**: 
   - Horizontal: $(i, j) \leftrightarrow (i, j \pm 1)$
   - Vertical: $(i, j) \leftrightarrow (i \pm 1, j)$
-- **Diagonal Neighbors**:
-  - $(i, j) \leftrightarrow (i \pm 1, j \pm 1)$
+### Connectivity (11×11 simulation)
 
-### Connectivity
+For an $N\times N$ lattice with **nearest neighbors only**:
+- **Interior masses**: up to 4 NN bonds
+- **Edge/corner masses**: fewer bonds accordingly
 
-For a 5×5 lattice:
-- **Interior masses**: 8 connections (4 nearest + 4 diagonal)
-- **Edge masses**: 5 connections
-- **Corner masses**: 3 connections
+Diagonal bonds are not included in the 11×11 ODE or energy.
 
 ### Index Mapping
 

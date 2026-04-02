@@ -60,7 +60,7 @@
 
 \begin{abstract}
 \noindent
-This note explains the \emph{idea} behind the nonlinear spring model used in the blast-loaded sandwich-plate simulations, then shows \emph{where} each piece lives in the Julia program. The core is a simple exponential relation between how far two neighboring masses move \emph{relative to each other} and the force between them. We also spell out how the lattice is wired (nearest neighbors, diagonals, damping), how layer materials enter the vertical and diagonal springs, and a few honest limitations (for example, the bundled potential-energy routine does not always match the forces the solver actually uses).
+This note explains the \emph{geometric} nonlinear spring model used in the blast-loaded sandwich-plate simulations, then shows \emph{where} each piece lives in the Julia program. The core is an exponential relation between bond stretch $s=|\mathbf{R}|-|\mathbf{R}_0|$ (current chord length minus reference length) and the axial force along the deformed chord. The lattice uses \textbf{nearest-neighbor bonds only} (horizontal and vertical); diagonal springs are not in the ODE or energy. Horizontal springs use global $(k,\alpha)$; vertical springs use column material $(k,\alpha,c)$. The potential energy routine matches the dynamics for the same bond routing.
 \end{abstract}
 
 % ---------------------------------------------------------------------------
@@ -82,7 +82,7 @@ Think of an $11\times 11$ array of masses, rows $i$ and columns $j$, both runnin
 \begin{bmatrix} (j-1)\,\Delta \\ (i-1)\,\Delta \end{bmatrix},
 \qquad \Delta = 1.0\ \mathrm{m}.
 \end{equation}
-So neighbors along a row sit $\Delta$ apart horizontally; neighbors along a column sit $\Delta$ apart vertically; diagonals sit $\Delta\sqrt{2}$ apart in the reference frame.
+So neighbors along a row sit $\Delta$ apart horizontally; neighbors along a column sit $\Delta$ apart vertically.
 
 \subsection{Displacements versus ``true'' positions}
 The differential equation solver does \emph{not} store full positions $\mathbf{X}_{ij}(t)$ in the half of the state vector devoted to ``positions.'' It stores \textbf{displacements} $\mathbf{u}_{ij}(t)$ from that reference:
@@ -95,71 +95,62 @@ At the start of a run, every mass is at rest at its reference node: $\mathbf{u}_
 The reference grid is \texttt{create\_equilibrium\_grid()} using \texttt{GRID\_SPACING = 1.0}. The state vector \texttt{u} begins as \texttt{u0 = zeros(...)}; its position block is reshaped into \texttt{pos}, with \texttt{pos[:,k] = u}$_{ij}$ for index \texttt{k = lattice\_idx(i,j)}. Plots use \texttt{current = displacement + equilibrium\_grid}.
 \end{codebox}
 
-\subsection{What enters the spring: relative displacement, not raw distance in space}
-For a bond between masses $a$ and $b$, the implementation feeds spring routines the \emph{difference of nodal displacements}:
+\subsection{Reference chord and deformed chord}
+For a bond from mass $a$ to neighbor $b$, let $\mathbf{R}_0=\mathbf{X}_b^{\mathrm{eq}}-\mathbf{X}_a^{\mathrm{eq}}$ (reference chord from $a$ toward $b$). With stored displacements,
 \begin{equation}
-\mathbf{r} = \mathbf{u}_b - \mathbf{u}_a.
+\mathbf{R}=\mathbf{R}_0+(\mathbf{u}_b-\mathbf{u}_a),\qquad
+L_0=\|\mathbf{R}_0\|,\qquad L=\|\mathbf{R}\|,\qquad s=L-L_0.
 \label{eq:rdef}
 \end{equation}
-Let $d = \|\mathbf{r}\|$. When the whole lattice is still at its reference placement, every $\mathbf{u}$ is zero, so $\mathbf{r}=\mathbf{0}$ and $d=0$: \textbf{no spring force}. That matches the idea of starting from an unstressed reference.
-
-\medskip
-\noindent
-\textbf{How this relates to ``elongation.''} If two neighbors only slide apart along their bond axis (for example, a horizontal link and only horizontal relative motion), then $d$ agrees with the usual notion of how much longer that link is than in the reference layout. If the motion mixes shearing or both $x$ and $y$ components, $d$ is the length of the \emph{relative displacement vector}; the force points along that vector. That is slightly different from a bar whose tension depends only on the \textbf{current straight-line distance} $|\mathbf{X}_b-\mathbf{X}_a|$ in the lab frame. For many load cases the distinction is minor; it matters most when shear between the two nodes is large relative to stretch.
+At $\mathbf{u}=0$, $\mathbf{R}=\mathbf{R}_0$ and $s=0$: \textbf{no spring force}. The stretch $s$ is the true elongation of the bond in the lab frame (geometric spring), and $\hat{\mathbf{R}}=\mathbf{R}/L$ is the axial direction under shear or combined motion.
 
 % ---------------------------------------------------------------------------
 \section{Force on one spring: magnitude and direction}
 \label{sec:force-law}
 
-Let $\mathbf{r}=\mathbf{u}_b-\mathbf{u}_a$ as in \eqref{eq:rdef} and $d=\|\mathbf{r}\|$. For $d$ above a tiny numerical floor ($10^{-12}$ in code), the model uses
+With $\mathbf{R}$, $L$, and $s$ as in \eqref{eq:rdef}, if $L$ is above a tiny floor ($10^{-12}$ in code),
 \begin{align}
-\hat{\mathbf{r}} &= \frac{\mathbf{r}}{d}, \\
-F_{\mathrm{mag}} &= k\left(e^{\alpha d}-1\right), \\
-\mathbf{F}_{\text{on }a\,\text{from }b} &= F_{\mathrm{mag}}\,\hat{\mathbf{r}}.
+\hat{\mathbf{R}} &= \frac{\mathbf{R}}{L}, \\
+F_{\mathrm{mag}} &= k\left(e^{\alpha s}-1\right), \\
+\mathbf{F}_{\text{on }a\,\text{from }b} &= F_{\mathrm{mag}}\,\hat{\mathbf{R}}.
 \label{eq:force}
 \end{align}
-So the magnitude grows with $d$ and blows up faster than linear once $\alpha d$ is order one or larger. The direction is always the line from $a$'s displacement state toward $b$'s in displacement space. If $d$ is below the floor, the force is set to zero to avoid dividing by zero.
+If $L$ is below the floor, the force is set to zero. The direction follows the \emph{deformed} chord $\mathbf{R}$, so shear rotates the axial force correctly.
 
 \medskip
-\noindent\textbf{Units.} In the project files, $k$ (\texttt{K\_COUPLING}, etc.) is given in newtons, and $\alpha$ in m$^{-1}$. That makes $e^{\alpha d}-1$ dimensionless and $F_{\mathrm{mag}}$ a force. The \emph{small-motion} stiffness (\S\ref{sec:energy}) is governed by the product $k\alpha$, which has units N/m.
+\noindent\textbf{Units.} $k$ is in N, $\alpha$ in m$^{-1}$, and $s$ in m, so $F_{\mathrm{mag}}$ is a force. For small $|s|$, $F_{\mathrm{mag}}\approx k\alpha s$.
 
 \begin{codebox}
-One bond is evaluated in \texttt{spring\_force\_2d(pos1, pos2, k, alpha)}, where \texttt{pos1} and \texttt{pos2} are the two displacements $\mathbf{u}_a$ and $\mathbf{u}_b$. The force returned is on the first mass from the second. The time-stepper adds these contributions for every neighbor; when the neighbor's turn comes, the opposite end of the link contributes the opposite force, so pairs stay balanced.
+One bond is evaluated in \texttt{spring\_force\_2d\_geometric(uA, uB, R0, k, alpha)}. The RHS \texttt{lattice\_2d\_rhs\_nn\_backplate!} passes the correct $\mathbf{R}_0$ for left/right/up/down neighbors (scaled by \texttt{GRID\_SPACING}).
 \end{codebox}
 
 % ---------------------------------------------------------------------------
 \section{Stored energy and the nearly-linear regime}
 \label{sec:energy}
 
-There is a potential energy for one bond that matches the magnitude in \eqref{eq:force}:
+The potential energy per bond consistent with \eqref{eq:force} along the bond is
 \begin{equation}
-U(d) = \frac{k}{\alpha}\left(e^{\alpha d} - \alpha d - 1\right),
-\qquad d=\|\mathbf{u}_b-\mathbf{u}_a\|.
+U(s) = \frac{k}{\alpha}\left(e^{\alpha s} - \alpha s - 1\right),
+\qquad s=L-L_0.
 \end{equation}
-One checks that $\mathrm{d}U/\mathrm{d}d = k(e^{\alpha d}-1) = F_{\mathrm{mag}}$. For very small stretches ($\alpha d \ll 1$),
-\[
-e^{\alpha d}-1 = \alpha d + \tfrac{1}{2}(\alpha d)^2 + \cdots
-\quad\Rightarrow\quad
-F_{\mathrm{mag}} \approx k\alpha\, d.
-\]
-So for tiny relative motion the spring ``acts linear'' with stiffness about $k\alpha$ in the variable $d$. That is \emph{not} the same number as a Hooke stiffness tied to real-world length change unless you relate $d$ carefully to geometry (\S\ref{sec:kinematics}).
+For small $|s|$, $U\approx \tfrac{1}{2}k\alpha\,s^2$.
 
 \begin{codebox}
-The same $U(d)$ form appears in \texttt{potential\_energy\_2d\_with\_diagonals\_and\_backplate} per bond. \textbf{Caution:} for some bond types that helper uses different $k,\alpha$ than the dynamics (see \S\ref{sec:pe-caveat}), so do not use it alone to audit total energy when columns use different materials.
+\texttt{potential\_energy\_2d\_nn\_backplate} sums this $U(s)$ over all NN bonds with the same $(k,\alpha)$ routing as \texttt{lattice\_2d\_rhs\_nn\_backplate!}, plus the wall penalty.
 \end{codebox}
 
 % ---------------------------------------------------------------------------
 \section{Wiring the whole lattice: neighbors, layers, and dashpots}
 
 \subsection{Who is connected to whom?}
-Each interior mass talks to up to eight neighbors: four along the grid (left, right, up, down) and four diagonals. Edge masses have fewer connections. This is the same connectivity described in the sandwich-plate write-up.
+Each interior mass has up to four NN neighbors (left, right, up, down). Edge and corner nodes have fewer. There are no diagonal springs in the 11×11 simulation.
 
 \subsection{Which springs are ``softer'' or ``stiffer'' by design?}
 \begin{itemize}
-  \item \textbf{Horizontal links.}\enspace Neighbors in the same row (left--right) share one global $(K_{\text{COUPLING}},\alpha_{\text{COUPLING}})$ and one dashpot strength $C_{\text{DAMPING}}$. They ignore the column material recipe.
-  \item \textbf{Vertical links} (same column, adjacent rows) use the material assigned to that column: stiffness $k$, rate $\alpha$, and damping $c$ from the active material index for column $j$.
-  \item \textbf{Diagonals} use the diagonal stiffness and $\alpha$ from the column of the mass that is currently being updated (the code walks each mass and visits its diagonal neighbors).
-  \item \textbf{Dashpots} act only on the four nearest-neighbor springs, not on the diagonals.
+  \item \textbf{Horizontal links.}\enspace Global $(K_{\text{COUPLING}},\alpha_{\text{COUPLING}})$ and base $C_{\text{DAMPING}}$ (not column material).
+  \item \textbf{Vertical links} (same column, adjacent rows) use column $j$ material: $k$, $\alpha$, and $c$ from \texttt{get\_column\_*}.
+  \item \textbf{Dashpots} act on all four NN directions, with column-based $c$ on vertical bonds.
+  \item Tuple fields \texttt{k\_diagonal}, \texttt{alpha\_diagonal} exist for optimizer/API compatibility but are \textbf{unused} in the dynamics.
 \end{itemize}
 
 \begin{table}[htbp]
@@ -170,11 +161,10 @@ Each interior mass talks to up to eight neighbors: four along the grid (left, ri
 \textbf{Bond} & \textbf{Stiffness $(k,\alpha)$} & \textbf{Damping} \\
 \midrule
 Horizontal & $K_{\text{COUPLING}}$, $\alpha_{\text{COUPLING}}$ everywhere & $C_{\text{DAMPING}}$ \\
-Vertical & Column $j$: material lookups \texttt{get\_column\_k\_coupling}, \texttt{get\_column\_alpha\_coupling} & column $c$ via \texttt{get\_column\_c\_damping} \\
-Diagonal & Column $j$ of current node: \texttt{get\_column\_k\_diagonal}, \texttt{get\_column\_alpha\_diagonal} & none \\
+Vertical & Column $j$: \texttt{get\_column\_k\_coupling}, \texttt{get\_column\_alpha\_coupling} & \texttt{get\_column\_c\_damping} \\
 \bottomrule
 \end{tabular}
-\caption{Bond parameters in the ODE right-hand side (\texttt{lattice\_2d\_rhs\_...}).}
+\caption{NN bond parameters in \texttt{lattice\_2d\_rhs\_nn\_backplate!}.}
 \label{tab:routing}
 \end{table}
 
@@ -182,7 +172,7 @@ Diagonal & Column $j$ of current node: \texttt{get\_column\_k\_diagonal}, \textt
 The program builds $N=11$ material records. Material $1$ uses the base numbers; for index $m>1$, stiffnesses and damping scale by $\sigma^{m-1}$ with $\sigma=\texttt{MATERIAL\_MULTIPLIER}$ (default $2/3$), while $\alpha$ is usually kept at the base value. A \texttt{material\_order} permutation places those materials in columns for optimization studies.
 
 \begin{codebox}
-Material tuples are built in \texttt{create\_default\_material\_properties}. During integration, parameters come from \texttt{p.material\_order} and \texttt{p.materials} when present; otherwise legacy column scaling via \texttt{MATERIAL\_MULTIPLIER} is used for vertical springs. The ODE right-hand side is \texttt{lattice\_2d\_rhs\_with\_diagonals\_and\_backplate!}.
+Material tuples are built in \texttt{create\_default\_material\_properties}. During integration, parameters come from \texttt{p.material\_order} and \texttt{p.materials} when present; otherwise default column scaling uses \texttt{DEFAULT\_MATERIALS} with identity column order. The ODE right-hand side is \texttt{lattice\_2d\_rhs\_nn\_backplate!}.
 \end{codebox}
 
 \subsection{Viscous damping (nearest neighbors only)}
@@ -208,7 +198,7 @@ Wall logic uses absolute $x = \texttt{(N-1)*GRID\_SPACING + pos\_k[1]}$. Loads u
 \section{Default numerical values in the simulation}
 \label{sec:constants}
 
-Table~\ref{tab:constants} lists the global constants as in the current source file. Vertical and diagonal springs felt by a given column also depend on which material index sits in that column after scaling.
+Table~\ref{tab:constants} lists the global constants as in the current source file. Vertical NN springs use column materials; diagonal constants in the table are retained in tuples only and are not applied in the ODE.
 
 \begin{table}[htbp]
 \centering
@@ -222,8 +212,8 @@ $\Delta$ (\texttt{GRID\_SPACING}) & \SI{1.0}{m} & Reference spacing \\
 $m$ (\texttt{MASS}) & \SI{1.0}{kg} & Mass per node \\
 $K_{\text{COUPLING}}$ & \SI{100}{N} & Horizontal NN springs; vertical scale reference \\
 $\alpha_{\text{COUPLING}}$ & \SI{10}{m^{-1}} & NN exponential rate (code comments say ``decay'' but here $\alpha>0$ \emph{stiffens} with stretch) \\
-$K_{\text{DIAGONAL}}$ & \SI{50}{N} & Diagonal scale (half of coupling in default) \\
-$\alpha_{\text{DIAGONAL}}$ & \SI{10}{m^{-1}} & Diagonal rate \\
+$K_{\text{DIAGONAL}}$ & \SI{50}{N} & Unused in ODE (kept in material tuples) \\
+$\alpha_{\text{DIAGONAL}}$ & \SI{10}{m^{-1}} & Unused in ODE (kept in material tuples) \\
 $C_{\text{DAMPING}}$ & \SI{5}{N\,s\,m^{-1}} & Base NN dashpot \\
 $\sigma$ (\texttt{MATERIAL\_MULTIPLIER}) & $2/3$ & Softens $k,c$ for higher material indices \\
 $k_{\mathrm{wall}}$, $c_{\mathrm{wall}}$ & \SI{10000}{N\,m^{-1}}, \SI{10}{N\,s\,m^{-1}} & Backplate \\
@@ -236,15 +226,6 @@ $F_{\mathrm{tot}}$, $t_{\mathrm{act}}$ & \SI{1200}{N}, \SI{0.15}{s} & Edge load 
 \end{table}
 
 % ---------------------------------------------------------------------------
-\section{A limitation to know about: potential energy helper vs.\ real forces}
-\label{sec:pe-caveat}
-
-The routine \texttt{potential\_energy\_2d\_with\_diagonals\_and\_backplate} is convenient, but it does \emph{not} always use the same $(k,\alpha)$ on every bond that the ODE uses. In particular, vertical springs in that helper use uniform $K_{\text{COUPLING}}$ and $\alpha_{\text{COUPLING}}$ for all columns, while the dynamics apply column-specific materials to vertical links. Diagonal terms in the helper also do not mirror the column-wise diagonal $(k,\alpha)$ used in the right-hand side.
-
-\medskip
-\noindent\textbf{Takeaway.} Trust \texttt{lattice\_2d\_rhs\_with\_diagonals\_and\_backplate!} for what the simulation actually does; use the energy function with care when layers are permuted or material arrays differ from the default pattern.
-
-% ---------------------------------------------------------------------------
 \section{Matching symbols in the written paper to this program}
 \label{sec:notation}
 
@@ -252,18 +233,17 @@ The manuscript writes spring forces using something like $\mathbf{r} = \mathbf{x
 
 % ---------------------------------------------------------------------------
 \section*{Appendix: core routine (Julia)}
-The following is the literal exponential spring used between two displacement vectors:
-
 \begin{lstlisting}
-function spring_force_2d(pos1, pos2, k, alpha)
-    displacement = pos2 - pos1
-    distance = norm(displacement)
-    if distance < 1e-12
+function spring_force_2d_geometric(uA, uB, R0, k, alpha)
+    R = R0 .+ (uB .- uA)
+    L = norm(R)
+    if L < 1e-12
         return zeros(2)
     end
-    direction = displacement / distance
-    force_magnitude = k * (exp(alpha * distance) - 1.0)
-    return force_magnitude * direction
+    L0 = norm(R0)
+    s = L - L0
+    Fmag = k * (exp(alpha * s) - 1.0)
+    return Fmag * (R / L)
 end
 \end{lstlisting}
 

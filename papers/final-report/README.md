@@ -6,6 +6,7 @@ This folder holds the consolidated **final report** for the spring-mass sandwich
 |------|---------|
 | `Final_Report.tex` | LaTeX source |
 | `Final_Report.pdf` | Built PDF (regenerate after edits) |
+| `runs/README.md` | How to capture optimizer comparison artifacts (`run_*` folders) |
 
 Figures are shared from `papers/figures/` (paths in the `.tex` file use `../figures/`).
 

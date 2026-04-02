@@ -6,24 +6,32 @@ This directory contains scripts for optimizing the ordering of materials across 
 
 ### Run Optimizer Comparison
 
-The easiest way to run all optimizers and compare results:
+Preferred: timestamped folder under `papers/final-report/runs/` (writes `run_manifest.txt`, plots, CSV, TeX, optional mp4):
 
 ```bash
-# Quick test (2-5 evaluations, takes ~5-15 minutes)
-./scripts/optimization/run_overnight.sh 5
+./scripts/run_full_study.sh --evals 50
+# Smoke test:
+./scripts/run_full_study.sh --quick
+```
 
-# Full run (50-100 evaluations, takes ~4-7 hours)
+Overnight helper (logs to a file and sets `OPT_COMPARISON_OUTPUT_DIR` to a run subfolder):
+
+```bash
+./scripts/optimization/run_overnight.sh 50
+```
+
+Skip the post-run **mp4** (saves a lot of time; tables/plots/CSV still generated):
+
+```bash
+export SKIP_COMPARISON_ANIMATION=1
 ./scripts/optimization/run_overnight.sh 50
 ```
 
 Or directly with Julia:
 
 ```bash
-# Set max evaluations
+export OPT_COMPARISON_OUTPUT_DIR=/path/to/output   # optional; default: scripts/optimization/comparison_output
 MAX_EVALUATIONS=20 julia --project=. -e 'include("scripts/optimization/compare_optimizers.jl")'
-
-# Or pass as argument (if script supports it)
-julia --project=. scripts/optimization/compare_optimizers.jl
 ```
 
 ### Run Individual Optimizer
@@ -80,6 +88,16 @@ The number of function evaluations can be set in several ways:
 
 3. **Edit constants in scripts** (not recommended):
    - Each optimizer script has a `MAX_EVALUATIONS` or `MAX_ITERATIONS` constant at the top
+
+### Skip best-configuration animation
+
+After the comparison, `compare_optimizers.jl` can render `best_optimized_configuration.mp4` (slow). To disable:
+
+```bash
+export SKIP_COMPARISON_ANIMATION=1   # or true, yes, on (case-insensitive)
+```
+
+Recorded in `run_manifest.txt` as `SKIP_COMPARISON_ANIMATION: true/false`.
 
 ### Algorithm Requirements
 

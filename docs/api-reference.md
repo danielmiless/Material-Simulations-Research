@@ -4,19 +4,19 @@ This document provides detailed documentation for the codebase.
 
 ## Main Functions
 
-### `spring_force_2d(pos1, pos2, k, alpha)`
+### `spring_force_2d_geometric(uA, uB, R0, k, alpha)`
 
-Calculate 2D exponential spring force between two masses.
+11×11 geometric exponential spring: force on mass $A$ due to $B$. Arguments are **displacements from equilibrium** `uA`, `uB`; `R0` is the reference chord from $A$ toward $B$ in physical coordinates (scaled by `GRID_SPACING`).
 
-**Parameters**:
-- `pos1`: Position vector of mass 1 `[x, y]`
-- `pos2`: Position vector of mass 2 `[x, y]`
-- `k`: Spring constant (N)
-- `alpha`: Exponential decay rate (m⁻¹)
+**Returns**: Force on $A$ in the global frame.
 
-**Returns**: Force vector on mass 1 due to mass 2 `[Fx, Fy]`
+**Force law**: $\mathbf{R} = \mathbf{R}_0 + (\mathbf{u}_B-\mathbf{u}_A)$, $s = |\mathbf{R}|-|\mathbf{R}_0|$, $\mathbf{F} = k(e^{\alpha s}-1)\hat{\mathbf{R}}$.
 
-**Force Law**: $F = k \frac{\mathbf{r}}{|\mathbf{r}|} (e^{\alpha |\mathbf{r}|} - 1)$
+---
+
+### `spring_force_2d(pos1, pos2, k, alpha)` (legacy scripts only)
+
+Older files may still define this helper using $|\mathbf{x}_2-\mathbf{x}_1|$ without a reference chord. Prefer `spring_force_2d_geometric` for `lattice_simulation_11x11.jl`.
 
 ---
 
@@ -66,22 +66,19 @@ Calculate x and y components of force from magnitude and angle.
 
 ---
 
-### `lattice_2d_rhs_with_diagonals!(du, u, p, t)`
+### `lattice_2d_rhs_nn_backplate!(du, u, p, t)`
 
-Right-hand side function for the ODE system. This is the main dynamics function.
+Main RHS for the **11×11** system: geometric NN springs, column-based $(k,\alpha,c)$, distributed edge load, and right wall/backplate. Optional `p = (material_order=..., materials=...)`; otherwise uses default column scaling.
 
-**Parameters**:
-- `du`: Derivative vector (output)
-- `u`: State vector (input)
-- `p`: Parameters (unused)
-- `t`: Time
+**State vector**: positions then velocities (2 DOF per mass).
 
-**State Vector Structure**:
-```
-u = [x1, y1, x2, y2, ..., xN, yN, vx1, vy1, vx2, vy2, ..., vxN, vyN]
-```
+**Modifies**: `du` in-place.
 
-**Modifies**: `du` in-place
+---
+
+### `lattice_2d_rhs_with_diagonals!(du, u, p, t)` (deprecated scripts)
+
+Legacy name in older lattice files; not used by `lattice_simulation_11x11.jl`.
 
 ---
 
@@ -98,16 +95,15 @@ Calculate total kinetic energy for 2D motion.
 
 ---
 
-### `potential_energy_2d_with_diagonals(pos_matrix)`
+### `potential_energy_2d_nn_backplate(pos_matrix; p=nothing)`
 
-Calculate total potential energy for 2D spring system.
+Total potential energy for the 11×11 model (geometric NN springs + wall penalty). `pos_matrix` holds **displacements**. Pass `p` to match a custom material ordering, same as the RHS.
 
-**Parameters**:
-- `pos_matrix`: 2×N matrix where each column is `[x, y]` for one mass
+---
 
-**Returns**: Total potential energy (J)
+### `potential_energy_2d_with_diagonals(pos_matrix)` (deprecated)
 
-**Note**: Implementation depends on spring model (exponential vs. linear)
+Legacy name in older scripts.
 
 ---
 
@@ -134,13 +130,17 @@ Create equilibrium positions for the lattice.
 
 ---
 
-### `create_spring_connections_with_diagonals()`
+### `create_spring_connections_nn()`
 
-Create list of spring connections for visualization.
+Undirected nearest-neighbor bonds for visualization (horizontal + vertical).
 
-**Returns**: Tuple `(nearest_neighbor_connections, diagonal_connections)`
+**Returns**: `Vector{Tuple{Int,Int}}` of mass index pairs.
 
-Each connection is a tuple `(k1, k2)` of mass indices.
+---
+
+### `create_spring_connections_with_diagonals()` (deprecated scripts)
+
+Legacy helper returning NN and diagonal lists; not defined in `lattice_simulation_11x11.jl`.
 
 ---
 

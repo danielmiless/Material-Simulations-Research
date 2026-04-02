@@ -37,11 +37,11 @@ function run_simulation_and_get_snapshot(file_path, title, output_path, snapshot
     # Include the simulation file
     include(file_path)
     
-    # Run simulation (suppress output)
     println("  Running simulation...")
     u0 = zeros(2 * TOTAL_DOF)
     tspan = (0.0, T_END)
-    prob = ODEProblem(lattice_2d_rhs_with_diagonals_and_backplate!, u0, tspan)
+    rhs_fn = isdefined(Main, :lattice_2d_rhs_nn_backplate!) ? lattice_2d_rhs_nn_backplate! : lattice_2d_rhs_with_diagonals_and_backplate!
+    prob = ODEProblem(rhs_fn, u0, tspan)
     sol = solve(prob, Vern9();
                 reltol = REL_TOL, 
                 abstol = ABS_TOL,
@@ -86,39 +86,18 @@ function run_simulation_and_get_snapshot(file_path, title, output_path, snapshot
     end
     
     nearest_neighbor_connections = Tuple{Int, Int}[]
-    diagonal_connections = Tuple{Int, Int}[]
-    
     for i in 1:n_size, j in 1:n_size
         k = idx(i, j, n_size)
-        
-        # Horizontal springs
         if j < n_size
             push!(nearest_neighbor_connections, (k, idx(i, j+1, n_size)))
         end
-        
-        # Vertical springs
         if i < n_size
             push!(nearest_neighbor_connections, (k, idx(i+1, j, n_size)))
         end
-        
-        # Diagonal springs
-        if i < n_size && j < n_size
-            push!(diagonal_connections, (k, idx(i+1, j+1, n_size)))
-        end
-        if i < n_size && j > 1
-            push!(diagonal_connections, (k, idx(i+1, j-1, n_size)))
-        end
     end
-    
-    # Plot springs
     for (k1, k2) in nearest_neighbor_connections
         spring_points = Point2f[current_positions[:, k1], current_positions[:, k2]]
         lines!(ax, spring_points, color = :blue, linewidth = 2)
-    end
-    
-    for (k1, k2) in diagonal_connections
-        spring_points = Point2f[current_positions[:, k1], current_positions[:, k2]]
-        lines!(ax, spring_points, color = :red, linewidth = 1.5)
     end
     
     # Plot backplate

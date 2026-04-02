@@ -9,6 +9,12 @@ Generates:
 - LaTeX comparison tables
 - CSV data files
 - Summary statistics
+- Optional mp4 of the best configuration (set `SKIP_COMPARISON_ANIMATION=1` to skip)
+
+Environment:
+- `OPT_COMPARISON_OUTPUT_DIR` — output folder (default: `comparison_output` next to this script)
+- `MAX_EVALUATIONS` / `Main.MAX_EVALUATIONS` / first CLI arg — evaluation budget
+- `SKIP_COMPARISON_ANIMATION` — if truthy (`1`, `true`, `yes`, `on`), skip `best_optimized_configuration.mp4`
 """
 
 using Printf
@@ -38,14 +44,8 @@ const DEFAULT_MAX_EVALUATIONS = 20  # Reduced for faster testing (increase to 50
 const VERBOSE = true
 const TRACK_HISTORY = true
 
-# Check for command line argument, environment variable, or Julia variable
+# Priority: CLI ARGS → Main.MAX_EVALUATIONS (set before include) → ENV → default
 function get_max_evaluations()
-    # First check if MAX_EVALUATIONS is already defined as a Julia variable in Main
-    # (e.g., set via -e 'MAX_EVALUATIONS=50; include(...)')
-    if isdefined(Main, :MAX_EVALUATIONS)
-        return Main.MAX_EVALUATIONS
-    end
-    # Check command line args
     if length(ARGS) > 0
         try
             return parse(Int, ARGS[1])
@@ -53,7 +53,9 @@ function get_max_evaluations()
             @warn "Could not parse max_evaluations from command line, using default"
         end
     end
-    # Check environment variable
+    if isdefined(Main, :MAX_EVALUATIONS)
+        return Main.MAX_EVALUATIONS
+    end
     if haskey(ENV, "MAX_EVALUATIONS")
         try
             return parse(Int, ENV["MAX_EVALUATIONS"])
@@ -638,15 +640,37 @@ end
 # Run if executed directly OR if included with MAX_EVALUATIONS set
 # When included via -e 'MAX_EVALUATIONS=50; include(...)', PROGRAM_FILE is empty string ""
 const CURRENT_FILE = @__FILE__
-should_run = abspath(PROGRAM_FILE) == CURRENT_FILE || 
-             ((PROGRAM_FILE == "" || PROGRAM_FILE == "none") && isdefined(Main, :MAX_EVALUATIONS))
+# `julia -e 'include(...)'` leaves PROGRAM_FILE empty — still run comparison (ENV / defaults supply eval count)
+should_run = abspath(PROGRAM_FILE) == CURRENT_FILE ||
+             (PROGRAM_FILE == "" || PROGRAM_FILE == "none")
 if should_run
-    # Create output directory
-    output_dir = joinpath(@__DIR__, "comparison_output")
-    mkpath(output_dir)
-    
-    # Get max evaluations from command line or environment
     max_evals = get_max_evaluations()
+    output_dir = get(ENV, "OPT_COMPARISON_OUTPUT_DIR", joinpath(@__DIR__, "comparison_output"))
+    mkpath(output_dir)
+
+    skip_comparison_animation = let v = strip(get(ENV, "SKIP_COMPARISON_ANIMATION", ""))
+        !isempty(v) && lowercase(v) in ("1", "true", "yes", "on")
+    end
+
+    repo_root = abspath(joinpath(@__DIR__, "..", ".."))
+    git_head = try
+        readchomp(`git -C $repo_root rev-parse HEAD`)
+    catch
+        "unknown"
+    end
+    manifest_path = joinpath(output_dir, "run_manifest.txt")
+    open(manifest_path, "w") do io
+        println(io, "timestamp: ", Dates.format(now(), dateformat"yyyy-mm-dd HH:MM:SS"))
+        println(io, "git_commit: ", git_head)
+        println(io, "julia_version: ", VERSION)
+        println(io, "max_evaluations: ", max_evals)
+        println(io, "threads: ", Threads.nthreads())
+        println(io, "repo_root: ", repo_root)
+        println(io, "OPT_COMPARISON_OUTPUT_DIR: ", output_dir)
+        println(io, "SKIP_COMPARISON_ANIMATION: ", skip_comparison_animation)
+    end
+    println("Wrote run manifest: $manifest_path")
+
     println("Using max_evaluations = $max_evals")
     println("(Override with: julia compare_optimizers.jl <number> or set MAX_EVALUATIONS env var)")
     println()
@@ -681,58 +705,68 @@ if should_run
     println("\nExporting CSV data...")
     export_csv_data(results, output_dir)
     
-    # Generate animation for best optimized configuration
+    # Optional: mp4 of best configuration (slow); set SKIP_COMPARISON_ANIMATION=1 to skip
     println("\n" * "="^80)
-    println("Generating animation for best optimized configuration...")
-    println("="^80)
-    
-    # Find best overall configuration
     successful_results = [(name, res) for (name, res) in results if res.success]
-    animation_generated = false
-    
-    if !isempty(successful_results)
-        best_idx = argmin([res.force for (_, res) in successful_results])
-        best_name, best_res = successful_results[best_idx]
-        
-        println("Best configuration found:")
-        println("  Optimizer: $best_name")
-        println("  Peak Force: $(best_res.force) N")
-        println("  Material Ordering: $(best_res.permutation)")
-        println()
-        
-        # Generate animation filename
-        anim_filename = joinpath(output_dir, "best_optimized_configuration.mp4")
-        
-        try
-            println("Running simulation with best material ordering...")
-            println("  This may take several minutes...")
-            flush(stdout)  # Ensure output is visible
-            
-            save_animation_with_material_ordering(
-                best_res.permutation,
-                filename=anim_filename,
-                materials=DEFAULT_MATERIALS
-            )
-            println("✓ Animation saved to: $anim_filename")
-            animation_generated = true
-        catch e
-            println("⚠ Animation generation failed (this is non-critical)")
-            println("  Error type: $(typeof(e))")
-            println("  Error message: $e")
-            # Print a brief stacktrace
-            try
-                bt = catch_backtrace()
-                st = stacktrace(bt)
-                println("  Stacktrace (first 3 lines):")
-                for i in 1:min(3, length(st))
-                    println("    $(st[i])")
-                end
-            catch
-                # If stacktrace fails, just continue
-            end
+    anim_saved = Ref(false)
+
+    if skip_comparison_animation
+        println("Skipping best-configuration animation (SKIP_COMPARISON_ANIMATION is set).")
+        println("="^80)
+        if !isempty(successful_results)
+            best_idx = argmin([res.force for (_, res) in successful_results])
+            best_name, best_res = successful_results[best_idx]
+            println("Best configuration (no video):")
+            println("  Optimizer: $best_name")
+            println("  Peak Force: $(best_res.force) N")
+            println("  Material Ordering: $(best_res.permutation)")
+        else
+            println("⚠ No successful optimizations found.")
         end
     else
-        println("⚠ No successful optimizations found - skipping animation generation")
+        println("Generating animation for best optimized configuration...")
+        println("="^80)
+        if !isempty(successful_results)
+            best_idx = argmin([res.force for (_, res) in successful_results])
+            best_name, best_res = successful_results[best_idx]
+
+            println("Best configuration found:")
+            println("  Optimizer: $best_name")
+            println("  Peak Force: $(best_res.force) N")
+            println("  Material Ordering: $(best_res.permutation)")
+            println()
+
+            anim_filename = joinpath(output_dir, "best_optimized_configuration.mp4")
+
+            try
+                println("Running simulation with best material ordering...")
+                println("  This may take several minutes...")
+                flush(stdout)
+
+                save_animation_with_material_ordering(
+                    best_res.permutation,
+                    filename=anim_filename,
+                    materials=DEFAULT_MATERIALS
+                )
+                println("✓ Animation saved to: $anim_filename")
+                anim_saved[] = true
+            catch e
+                println("⚠ Animation generation failed (this is non-critical)")
+                println("  Error type: $(typeof(e))")
+                println("  Error message: $e")
+                try
+                    bt = catch_backtrace()
+                    st = stacktrace(bt)
+                    println("  Stacktrace (first 3 lines):")
+                    for i in 1:min(3, length(st))
+                        println("    $(st[i])")
+                    end
+                catch
+                end
+            end
+        else
+            println("⚠ No successful optimizations found - skipping animation generation")
+        end
     end
     
     println("\n" * "="^80)
@@ -744,7 +778,7 @@ if should_run
     println("  - Best-so-far convergence plot: optimizer_best_so_far_convergence.png")
     println("  - LaTeX table: optimizer_comparison_table.tex")
     println("  - CSV data: optimizer_summary.csv + convergence_*.csv")
-    if animation_generated
+    if anim_saved[]
         println("  - Best configuration animation: best_optimized_configuration.mp4")
     end
 end

@@ -38,7 +38,7 @@ material_order = collect(1:N)  # Sequential ordering
 u0 = zeros(2 * TOTAL_DOF)
 tspan = (0.0, T_END)
 p = (material_order=material_order, materials=DEFAULT_MATERIALS)
-prob = ODEProblem(lattice_2d_rhs_with_diagonals_and_backplate!, u0, tspan, p)
+prob = ODEProblem(lattice_2d_rhs_nn_backplate!, u0, tspan, p)
 sol = solve(prob, Vern9();
             reltol = REL_TOL, 
             abstol = ABS_TOL,
@@ -154,7 +154,7 @@ for n in 1:length(sol.t)
     vel = reshape(view(sol.u[n], TOTAL_DOF+1:2*TOTAL_DOF), 2, TOTAL_MASSES)
     
     ke = kinetic_energy_2d(vel)
-    pe = potential_energy_2d_with_diagonals_and_backplate(pos)
+    pe = potential_energy_2d_nn_backplate(pos; p=p)
     
     push!(kinetic_energies, ke)
     push!(potential_energies, pe)

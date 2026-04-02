@@ -1,0 +1,5 @@
+# Timestamped run folders (artifacts)
+run_*/
+
+# Large generated media
+*.mp4

@@ -1,18 +1,21 @@
 #!/bin/bash
 # Overnight Optimizer Comparison Script
 # Runs the full comparison with higher max_evaluations and logs everything
+#
+# Optional environment:
+#   export SKIP_COMPARISON_ANIMATION=1   # skip slow mp4 render after comparison (CSV/plots/TeX still written)
+#   export JULIA_NUM_THREADS=8         # parallel objective evaluations
 
 set -e  # Exit on error
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-OUTPUT_DIR="$SCRIPT_DIR/comparison_output"
 MAX_EVALS="${1:-50}"  # Default to 50 for overnight run, can override
 
-# Create timestamped output directory
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
-RUN_DIR="$OUTPUT_DIR/overnight_run_$TIMESTAMP"
+RUN_DIR="${OPT_COMPARISON_OUTPUT_DIR:-$SCRIPT_DIR/comparison_output/overnight_run_$TIMESTAMP}"
 mkdir -p "$RUN_DIR"
+export OPT_COMPARISON_OUTPUT_DIR="$RUN_DIR"
 
 # Log file
 LOG_FILE="$RUN_DIR/overnight_run.log"
@@ -58,18 +61,6 @@ cd "$PROJECT_ROOT"
 # All optimizers run in parallel by default
 run_with_logging "Full Optimizer Comparison" \
     "julia --project=. -e 'MAX_EVALUATIONS=$MAX_EVALS; include(\"$SCRIPT_DIR/compare_optimizers.jl\")'"
-
-# Copy results to timestamped directory
-# The comparison script saves to OUTPUT_DIR directly, not OUTPUT_DIR/comparison_output
-if [ -f "$OUTPUT_DIR/comparison_results.txt" ]; then
-    echo "Copying comparison results to run directory..." | tee -a "$LOG_FILE"
-    cp "$OUTPUT_DIR"/comparison_results.txt "$RUN_DIR/" 2>/dev/null || true
-    cp "$OUTPUT_DIR"/optimizer_summary.csv "$RUN_DIR/" 2>/dev/null || true
-    cp "$OUTPUT_DIR"/optimizer_comparison_table.tex "$RUN_DIR/" 2>/dev/null || true
-    cp "$OUTPUT_DIR"/optimizer_convergence_comparison.png "$RUN_DIR/" 2>/dev/null || true
-    cp "$OUTPUT_DIR"/convergence_*.csv "$RUN_DIR/" 2>/dev/null || true
-    cp "$OUTPUT_DIR"/best_optimized_configuration.mp4 "$RUN_DIR/" 2>/dev/null || true
-fi
 
 # Final summary
 echo "" | tee -a "$LOG_FILE"

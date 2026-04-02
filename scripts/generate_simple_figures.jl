@@ -96,30 +96,10 @@ function generate_5x5_lattice_figure()
         end
     end
     
-    # Draw diagonal springs
-    for i in 1:N
-        for j in 1:N
-            # Diagonal down-right
-            if i < N && j < N
-                k1 = idx(i, j)
-                k2 = idx(i+1, j+1)
-                lines!(ax, Point2f[positions[k1], positions[k2]], color = :red, linewidth = 1.5, linestyle = :dash)
-            end
-            # Diagonal down-left
-            if i < N && j > 1
-                k1 = idx(i, j)
-                k2 = idx(i+1, j-1)
-                lines!(ax, Point2f[positions[k1], positions[k2]], color = :red, linewidth = 1.5, linestyle = :dash)
-            end
-        end
-    end
-    
     # Draw masses
     scatter!(ax, positions, markersize = 20, color = :black, strokewidth = 2, strokecolor = :white)
     
-    # Add legend
-    lines!(ax, Point2f[Point2f(-0.5, -0.5), Point2f(-0.3, -0.5)], color = :blue, linewidth = 2, label = "Nearest Neighbor")
-    lines!(ax, Point2f[Point2f(-0.5, -0.6), Point2f(-0.3, -0.6)], color = :red, linewidth = 1.5, linestyle = :dash, label = "Diagonal")
+    lines!(ax, Point2f[Point2f(-0.5, -0.5), Point2f(-0.3, -0.5)], color = :blue, linewidth = 2, label = "NN springs (matches 11×11 model)")
     axislegend(ax, position = :rt)
     
     save(joinpath(figures_dir, "5x5_lattice_system.png"), fig)

@@ -21,9 +21,9 @@ include(joinpath(@__DIR__, "optimization_utils.jl"))
 ########################################################################
 #  OPTIMIZATION CONFIGURATION
 ########################################################################
-# Use regular variables to avoid conflicts when multiple scripts are included
-if !@isdefined(MAX_EVALUATIONS)
-    const MAX_EVALUATIONS = 100  # Maximum number of function evaluations
+# Default when this file is run standalone (do not use name MAX_EVALUATIONS — compare_optimizers.jl uses that for global budget)
+if !@isdefined(STANDALONE_MAX_EVALUATIONS_DEFAULT)
+    const STANDALONE_MAX_EVALUATIONS_DEFAULT = 100
 end
 if !@isdefined(VERBOSE)
     const VERBOSE = true
@@ -38,7 +38,7 @@ end
 ########################################################################
 function optimize_material_ordering_blackbox(; 
     materials=DEFAULT_MATERIALS,
-    max_evaluations=MAX_EVALUATIONS,
+    max_evaluations=STANDALONE_MAX_EVALUATIONS_DEFAULT,
     verbose=VERBOSE,
     track_history=TRACK_HISTORY
 )
@@ -131,7 +131,7 @@ if abspath(PROGRAM_FILE) == @__FILE__
     config = Dict(
         "optimizer" => "BlackBoxOptim",
         "method" => "adaptive_de_rand_1_bin_radiuslimited",
-        "max_evaluations" => MAX_EVALUATIONS
+        "max_evaluations" => STANDALONE_MAX_EVALUATIONS_DEFAULT
     )
     
     result_file = joinpath(@__DIR__, "results_blackbox.txt")

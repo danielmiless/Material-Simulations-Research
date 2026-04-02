@@ -46,9 +46,8 @@ function load_and_modify_simulation(file_path, material_multiplier=nothing, n_si
     
     # Modify constants if needed
     if material_multiplier !== nothing
-        # Replace MATERIAL_MULTIPLIER constant
-        functions = replace(functions, 
-            r"const MATERIAL_MULTIPLIER = [0-9.]+" => 
+        functions = replace(functions,
+            r"const MATERIAL_MULTIPLIER = [^\n]+" =>
             "const MATERIAL_MULTIPLIER = $(material_multiplier)")
     end
     
@@ -88,13 +87,12 @@ function run_simulation_and_extract_data(sim_type, material_multiplier=nothing, 
     println("Running simulation: $(sim_type), multiplier=$(material_multiplier), N=$(n_size)")
     
     if sim_type == "backplate"
-        file_path = joinpath(deprecated_dir, "lattice_simulation_with_backplate.jl")
+        file_path = joinpath(src_dir, "lattice_simulation_11x11.jl")
         load_and_modify_simulation(file_path, material_multiplier, n_size)
         
-        # Run simulation
         u0 = zeros(2 * TOTAL_DOF)
         tspan = (0.0, T_END)
-        prob = ODEProblem(lattice_2d_rhs_with_diagonals_and_backplate!, u0, tspan)
+        prob = ODEProblem(lattice_2d_rhs_nn_backplate!, u0, tspan)
         sol = solve(prob, Vern9();
                     reltol = REL_TOL, 
                     abstol = ABS_TOL,
@@ -106,7 +104,7 @@ function run_simulation_and_extract_data(sim_type, material_multiplier=nothing, 
         end
         
         # Use invokelatest to handle world age issues with dynamically loaded functions
-        total_work = Base.invokelatest(work_done_2d_configurable, sol)
+        total_work = Base.invokelatest(work_done_2d_distributed, sol)
         equilibrium_grid = Base.invokelatest(create_equilibrium_grid)
         
         # Extract energy data
@@ -116,7 +114,7 @@ function run_simulation_and_extract_data(sim_type, material_multiplier=nothing, 
             pos = reshape(view(sol.u[i], 1:TOTAL_DOF), 2, TOTAL_MASSES)
             vel = reshape(view(sol.u[i], TOTAL_DOF+1:2*TOTAL_DOF), 2, TOTAL_MASSES)
             ke = Base.invokelatest(kinetic_energy_2d, vel)
-            pe = Base.invokelatest(potential_energy_2d_with_diagonals_and_backplate, pos)
+            pe = Base.invokelatest(potential_energy_2d_nn_backplate, pos)
             push!(energy_values, ke + pe)
         end
         
@@ -231,39 +229,18 @@ function generate_snapshot(sol, equilibrium_grid, backplate_positions, title, ou
     end
     
     nearest_neighbor_connections = Tuple{Int, Int}[]
-    diagonal_connections = Tuple{Int, Int}[]
-    
-    # Generate connections for N×N lattice
     for i in 1:n_size, j in 1:n_size
         k = idx(i, j, n_size)
-        
-        # Nearest neighbors (horizontal and vertical)
-        if j < n_size  # right neighbor
+        if j < n_size
             push!(nearest_neighbor_connections, (k, idx(i, j+1, n_size)))
         end
-        if i < n_size  # down neighbor
+        if i < n_size
             push!(nearest_neighbor_connections, (k, idx(i+1, j, n_size)))
         end
-        
-        # Diagonal neighbors (upper-left to lower-right)
-        if i < n_size && j < n_size
-            push!(diagonal_connections, (k, idx(i+1, j+1, n_size)))
-        end
-        # Diagonal neighbors (upper-right to lower-left)
-        if i < n_size && j > 1
-            push!(diagonal_connections, (k, idx(i+1, j-1, n_size)))
-        end
     end
-    
-    # Plot springs
     for (k1, k2) in nearest_neighbor_connections
         spring_points = Point2f[current_positions[:, k1], current_positions[:, k2]]
         lines!(ax, spring_points, color = :blue, linewidth = 2)
-    end
-    
-    for (k1, k2) in diagonal_connections
-        spring_points = Point2f[current_positions[:, k1], current_positions[:, k2]]
-        lines!(ax, spring_points, color = :red, linewidth = 1.5)
     end
     
     # Plot backplate if present

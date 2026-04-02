@@ -15,7 +15,7 @@ This repository contains computational research on mass-spring lattice systems w
 This project investigates the dynamics of 2D mass-spring lattice systems using exponential spring models. The simulations explore:
 
 - Exponential spring force models with configurable decay rates
-- 2D lattice systems with nearest-neighbor and diagonal spring connections
+- 2D lattice systems with nearest-neighbor springs only (11×11 model: geometric exponential law; no diagonal springs)
 - Viscous damping on nearest-neighbor springs (energy dissipation)
 - Immovable boundary conditions (backplate constraints)
 - Column-based material property scaling (heterogeneous materials)

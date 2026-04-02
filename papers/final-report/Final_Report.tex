@@ -237,12 +237,12 @@ m_2 \frac{d\mathbf{v}_2}{dt} &= -k \frac{\mathbf{x}_2 - \mathbf{x}_1}{|\mathbf{x
 
 \subsection{5×5 Lattice System}
 
-\noindent We now extend the two-mass system to a 5×5 square lattice containing 25 masses arranged in a regular grid. Each mass is connected to its nearest neighbors (horizontal and vertical) and diagonal neighbors, creating a complex network of spring interactions.
+\noindent We now extend the two-mass system to a 5×5 square lattice containing 25 masses arranged in a regular grid. Each mass is connected only to its nearest neighbors (horizontal and vertical); this matches the connectivity used in the 11×11 simulation code.
 
 \begin{figure}[!h]
 \centering
 \includegraphics[width=0.7\textwidth]{../figures/5x5_lattice_system.png}
-\caption{Schematic of a 5×5 mass-spring lattice system. Twenty-five point masses are arranged in a regular grid with spacing $\Delta = 1.0$ m. Blue lines represent nearest-neighbor connections (horizontal and vertical), while red dashed lines represent diagonal connections. Each mass is connected to up to 8 neighbors (4 nearest neighbors and 4 diagonal neighbors for interior masses).}
+\caption{Schematic of a 5×5 mass-spring lattice system. Twenty-five point masses are arranged in a regular grid with spacing $\Delta = 1.0$ m. Blue lines are nearest-neighbor bonds (horizontal and vertical). Interior masses have up to four such connections.}
 \label{fig:5x5_lattice}
 \end{figure}
 
@@ -257,11 +257,7 @@ m_2 \frac{d\mathbf{v}_2}{dt} &= -k \frac{\mathbf{x}_2 - \mathbf{x}_1}{|\mathbf{x
 
 \noindent \textbf{Connectivity:}
 
-\noindent Each mass is connected to:
-\begin{itemize}
-    \item \textbf{Nearest neighbors} (horizontal and vertical): 4 connections for interior masses, 2-3 for edge masses, 1-2 for corner masses
-    \item \textbf{Diagonal neighbors}: 4 connections for interior masses, 1-2 for edge masses, 0-1 for corner masses
-\end{itemize}
+\noindent Each mass is connected to its nearest neighbors on the grid (horizontal and vertical only).
 
 \noindent For a mass at position $(i, j)$, the nearest neighbors are:
 \begin{itemize}
@@ -269,20 +265,13 @@ m_2 \frac{d\mathbf{v}_2}{dt} &= -k \frac{\mathbf{x}_2 - \mathbf{x}_1}{|\mathbf{x
     \item Vertical: $(i-1, j)$ and $(i+1, j)$
 \end{itemize}
 
-\noindent Diagonal neighbors are:
-\begin{itemize}
-    \item $(i-1, j-1)$, $(i-1, j+1)$, $(i+1, j-1)$, $(i+1, j+1)$
-\end{itemize}
+\noindent \textbf{Spring forces (geometric exponential bond):}
 
-\noindent \textbf{Spring Forces:}
-
-\noindent All springs use the exponential force law. Nearest-neighbor springs use parameters $(k_{coupling}, \alpha_{coupling})$, while diagonal springs use $(k_{diagonal}, \alpha_{diagonal})$. Typically, $k_{diagonal} = 0.5 k_{coupling}$ and $\alpha_{diagonal} = \alpha_{coupling}$. \newline
-
-\noindent For a mass at $(i, j)$ connected to neighbor at $(i', j')$:
+\noindent Let $\mathbf{X}_{i,j}^{\mathrm{eq}}$ denote the reference grid location of mass $(i,j)$ and $\mathbf{x}_{i,j}$ its displacement from that reference (as in the numerical implementation). For a bond from $(i,j)$ to neighbor $(i',j')$, define the reference chord $\mathbf{R}_0 = \mathbf{X}_{i',j'}^{\mathrm{eq}} - \mathbf{X}_{i,j}^{\mathrm{eq}}$ and the deformed chord $\mathbf{R} = \mathbf{R}_0 + (\mathbf{x}_{i',j'} - \mathbf{x}_{i,j})$. With $L_0 = \|\mathbf{R}_0\|$, $L=\|\mathbf{R}\|$, and stretch $s = L - L_0$,
 \begin{equation}
-\mathbf{F}_{spring} = k \frac{\mathbf{r}}{|\mathbf{r}|} \left( e^{\alpha |\mathbf{r}|} - 1 \right)
+\mathbf{F}_{spring} = k \left( e^{\alpha s} - 1 \right) \frac{\mathbf{R}}{L}.
 \end{equation}
-\noindent where $\mathbf{r} = \mathbf{x}_{i',j'} - \mathbf{x}_{i,j}$ and $(k, \alpha)$ are the appropriate spring parameters. \newline
+\noindent Horizontal bonds use $(k,\alpha) = (k_{coupling},\alpha_{coupling})$. Vertical bonds in column $j$ use the material-assigned $(k,\alpha)$ for that column in the 11×11 model. \newline
 
 \noindent \textbf{Damping Forces:}
 
@@ -298,11 +287,11 @@ where $c$ is the damping coefficient (N·s/m). \newline
 \noindent For each mass $(i, j)$, the equation of motion is:
 
 \begin{equation}
-m \frac{d\mathbf{v}_{i,j}}{dt} = \sum_{\text{neighbors}} \mathbf{F}_{spring} + \sum_{\text{nearest neighbors}} \mathbf{F}_{damping} + \mathbf{F}_{ext,i,j}
+m \frac{d\mathbf{v}_{i,j}}{dt} = \sum_{\text{NN}} \mathbf{F}_{spring} + \sum_{\text{NN}} \mathbf{F}_{damping} + \mathbf{F}_{ext,i,j}
 \label{eq:lattice_motion}
 \end{equation}
 
-\noindent where the sums are over all connected neighbors. The kinematic equations are:
+\noindent where the sums are over nearest-neighbor bonds. The kinematic equations are:
 \begin{equation}
 \frac{d\mathbf{x}_{i,j}}{dt} = \mathbf{v}_{i,j} \newline
 \end{equation}
@@ -330,7 +319,7 @@ m \frac{d\mathbf{v}_{i,j}}{dt} = \sum_{\text{neighbors}} \mathbf{F}_{spring} + \
 \begin{itemize}
     \item 121 point masses arranged in an 11×11 grid
     \item Total degrees of freedom: 242 (121 masses × 2 coordinates)
-    \item Same connectivity pattern as 5×5: nearest neighbors and diagonals
+    \item Nearest-neighbor connectivity only (horizontal and vertical), with the geometric stretch law above
     \item Grid spacing: $\Delta = 1.0$ m
 \end{itemize}
 
@@ -341,11 +330,10 @@ m \frac{d\mathbf{v}_{i,j}}{dt} = \sum_{\text{neighbors}} \mathbf{F}_{spring} + \
 \noindent For material $m$, the properties are:
 \begin{align}
 k_{coupling}^{(m)} &= k_0 \cdot \text{scale}^{(m)} \\
-k_{diagonal}^{(m)} &= 0.5 k_0 \cdot \text{scale}^{(m)} \\
 c_{damping}^{(m)} &= c_0 \cdot \text{scale}^{(m)} \\
-\alpha_{coupling}^{(m)} &= \alpha_0 \\
-\alpha_{diagonal}^{(m)} &= \alpha_0
+\alpha_{coupling}^{(m)} &= \alpha_0
 \end{align}
+\noindent (Material records may still list diagonal stiffness entries for software compatibility, but diagonal springs are not used in the dynamics.) \newline
 
 \noindent where $\text{scale}^{(m)} = (2/3)^{m-1}$ for $m > 1$ and $\text{scale}^{(1)} = 1.0$, with base values $k_0 = 100$ N, $c_0 = 5$ N·s/m, and $\alpha_0 = 10$ m$^{-1}$. \newline
 
@@ -381,7 +369,7 @@ where $\text{penetration} = x_{i,11} - x_{backplate}$, $k_{wall} = 10000$ N/m, a
 
 \noindent For each mass $(i, j)$:
 \begin{align}
-m \frac{d\mathbf{v}_{i,j}}{dt} &= \sum_{\text{all neighbors}} \mathbf{F}_{spring} + \sum_{\text{nearest neighbors}} \mathbf{F}_{damping} + \mathbf{F}_{ext,i,j} + \mathbf{F}_{wall,i,j} \\
+m \frac{d\mathbf{v}_{i,j}}{dt} &= \sum_{\text{NN}} \mathbf{F}_{spring} + \sum_{\text{NN}} \mathbf{F}_{damping} + \mathbf{F}_{ext,i,j} + \mathbf{F}_{wall,i,j} \\
 \frac{d\mathbf{x}_{i,j}}{dt} &= \mathbf{v}_{i,j}
 \end{align}
 
@@ -438,34 +426,25 @@ m \frac{d\mathbf{v}_{i,j}}{dt} &= \sum_{\text{all neighbors}} \mathbf{F}_{spring
 
 \subsection{Material Properties}
 
-\noindent Each of the 11 materials is defined by a tuple of five properties:
-\begin{itemize}
-    \item $k_{coupling}$: Spring constant for nearest-neighbor springs (N)
-    \item $k_{diagonal}$: Spring constant for diagonal springs (N)
-    \item $c_{damping}$: Damping coefficient for nearest-neighbor springs (N·s/m)
-    \item $\alpha_{coupling}$: Exponential decay rate for nearest-neighbor springs (m$^{-1}$)
-    \item $\alpha_{diagonal}$: Exponential decay rate for diagonal springs (m$^{-1}$)
-\end{itemize}
+\noindent Each of the 11 materials is defined by a tuple that includes $k_{coupling}$, $c_{damping}$, and $\alpha_{coupling}$ for the nearest-neighbor bonds used in the simulation. Additional tuple fields for diagonal stiffness (e.g.\ $k_{diagonal}$, $\alpha_{diagonal}$) are kept for software compatibility with the optimizer scripts but are \textbf{not} applied in the 11×11 dynamics.
 
 \noindent The materials are created using a scaling pattern where material $i$ has properties scaled by $(2/3)^{i-1}$ relative to the base material. The base material uses:
 \begin{itemize}
     \item $k_{coupling} = 100$ N
-    \item $k_{diagonal} = 50$ N
     \item $c_{damping} = 5$ N·s/m
     \item $\alpha_{coupling} = 10$ m$^{-1}$
-    \item $\alpha_{diagonal} = 10$ m$^{-1}$
 \end{itemize}
 
 \noindent Table~\ref{tab:material_properties} presents the complete material property set for all 11 materials.
 
 \begin{table}[h]
 \centering
-\caption{Material Properties for All 11 Materials}
+\caption{Material properties for all 11 materials. The $k_{diagonal}$ column matches stored tuple values but diagonal springs are not used in the simulation.}
 \label{tab:material_properties}
 \small
 \begin{tabular}{cccccc}
 \toprule
-Material & Scale Factor & $k_{coupling}$ (N) & $k_{diagonal}$ (N) & $c_{damping}$ (N·s/m) & $\alpha$ (m$^{-1}$) \\
+Material & Scale Factor & $k_{coupling}$ (N) & $k_{diagonal}$ (N, unused) & $c_{damping}$ (N·s/m) & $\alpha$ (m$^{-1}$) \\
 \midrule
 1 & 1.0000 & 100.00 & 50.00 & 5.00 & 10.0 \\
 2 & 0.6667 & 66.67 & 33.33 & 3.33 & 10.0 \\
@@ -572,16 +551,16 @@ T(t) = \frac{1}{2} m \sum_{i=1}^{N} |\mathbf{v}_i(t)|^2 = \frac{1}{2} m \sum_{i=
 
 \subsubsection{Potential Energy}
 
-\noindent The total potential energy is the sum over all springs. For an exponential spring connecting masses $i$ and $j$:
+\noindent The total potential energy is the sum over nearest-neighbor bonds using the same geometric stretch $s=L-L_0$ as in the force law:
 \begin{equation}
-U_{spring} = \frac{k}{\alpha} \left( e^{\alpha |\mathbf{r}_{ij}|} - \alpha |\mathbf{r}_{ij}| - 1 \right)
+U_{spring} = \frac{k}{\alpha} \left( e^{\alpha s} - \alpha s - 1 \right)
 \end{equation}
 
-\noindent where $\mathbf{r}_{ij} = \mathbf{x}_j - \mathbf{x}_i$ is the displacement vector and $(k, \alpha)$ are the spring parameters.
+\noindent with $(k,\alpha)$ routed per bond as in the equations of motion (global on horizontal links, column material on vertical links).
 
 \noindent The total potential energy is:
 \begin{equation}
-U(t) = \sum_{\text{all springs}} U_{spring} + U_{wall}(t)
+U(t) = \sum_{\text{NN bonds}} U_{spring} + U_{wall}(t)
 \label{eq:potential_energy}
 \end{equation}
 

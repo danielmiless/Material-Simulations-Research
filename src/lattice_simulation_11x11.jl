@@ -5,9 +5,9 @@ This script implements a 2D mass-spring lattice system (11×11) with exponential
 an immovable backplate to the right of the lattice, column-based material scaling, and a distributed load
 applied along the left edge (x=0, column 1).
 The system includes:
-- Exponential spring force law: F = k * (r/|r|) * (exp(alpha*|r|) - 1)
+- Geometric exponential springs: chord R = R0 + (u_B - u_A), stretch s = |R| - |R0|, F = k*(exp(α*s)-1)*R̂
 - Viscous damping on nearest-neighbor springs (energy dissipation)
-- Nearest-neighbor and diagonal spring connections
+- Nearest-neighbor connections only (k_diagonal / alpha_diagonal in material tuples are unused; kept for API compatibility)
 - Immovable backplate on the right side (fixed boundary condition)
 - Column-based material property scaling (columns 2-11 scaled by MATERIAL_MULTIPLIER)
 - Distributed external force application on left edge (trapezoidal distribution: F/20, F/10×9, F/20)
@@ -42,9 +42,9 @@ end
 ########################################################################
 const MASS        = 1.0          # kg for every mass
 const K_COUPLING  = 100.0        # N for nearest neighbor (horizontal/vertical) springs
-const K_DIAGONAL  = 50.0         # N for diagonal springs (typically weaker)
-const ALPHA_COUPLING = 10.0      # exponential decay rate for nearest neighbor springs (m⁻¹)
-const ALPHA_DIAGONAL = 10.0      # exponential decay rate for diagonal springs (m⁻¹)
+const K_DIAGONAL  = 50.0         # N — unused (diagonal springs removed); retained in material tuples for compatibility
+const ALPHA_COUPLING = 10.0      # exponential rate for NN springs in stretch s (m⁻¹)
+const ALPHA_DIAGONAL = 10.0      # unused; retained in material tuples for compatibility
 const C_DAMPING   = 5.0          # N·s/m damping coefficient for nearest-neighbor springs
 const WALL_STIFFNESS = 10000.0   # N/m for wall repulsion force (very stiff to prevent penetration)
 const WALL_DAMPING = 10.0        # N·s/m damping coefficient for wall collisions
@@ -307,27 +307,23 @@ end
 
 
 ########################################################################
-#  2D EXPONENTIAL SPRING FORCE CALCULATION
+#  2D GEOMETRIC EXPONENTIAL SPRING FORCE
 ########################################################################
-function spring_force_2d(pos1, pos2, k, alpha)
+function spring_force_2d_geometric(uA, uB, R0, k, alpha)
     """
-    Calculate 2D exponential spring force between two masses.
-    Returns force on mass 1 due to mass 2.
-    
-    For exponential spring: F = k * (r/|r|) * (exp(alpha*|r|) - 1)
-    where r = pos2 - pos1 is the displacement vector
+    Force on mass A due to mass B. State entries are displacements uA, uB from equilibrium.
+    R0 = X_B^eq - X_A^eq (reference chord from A toward B). Deformed chord:
+    R = R0 + (uB - uA), stretch s = |R| - |R0|, F_mag = k*(exp(α*s) - 1), direction R̂.
     """
-    displacement = pos2 - pos1  # vector from mass1 to mass2
-    distance = norm(displacement)
-    
-    if distance < 1e-12
+    R = R0 .+ (uB .- uA)
+    L = norm(R)
+    if L < 1e-12
         return zeros(2)
     end
-    
-    direction = displacement / distance
-    force_magnitude = k * (exp(alpha * distance) - 1.0)
-    
-    return force_magnitude * direction
+    L0 = norm(R0)
+    s = L - L0
+    Fmag = k * (exp(alpha * s) - 1.0)
+    return Fmag * (R / L)
 end
 
 
@@ -348,9 +344,9 @@ end
 
 
 ########################################################################
-#  ODE RIGHT-HAND SIDE FOR 2D MOTION WITH DIAGONAL SPRINGS AND BACKPLATE
+#  ODE RIGHT-HAND SIDE: NEAREST-NEIGHBOR SPRINGS + BACKPLATE
 ########################################################################
-function lattice_2d_rhs_with_diagonals_and_backplate!(du, u, p, t)
+function lattice_2d_rhs_nn_backplate!(du, u, p, t)
     # Extract positions and velocities from state vector
     pos = reshape(view(u, 1:TOTAL_DOF), 2, TOTAL_MASSES)
     vel = reshape(view(u, TOTAL_DOF+1:2*TOTAL_DOF), 2, TOTAL_MASSES)
@@ -391,18 +387,15 @@ function lattice_2d_rhs_with_diagonals_and_backplate!(du, u, p, t)
         pos_k = pos[:, k]
         vel_k = vel[:, k]
         
-        # Helper function to add spring force from neighbor
-        function add_spring_force!(neighbor_i, neighbor_j, k_spring, alpha_spring, add_damping=false, damping_coeff=C_DAMPING)
+        Δ = GRID_SPACING
+        # Helper: R0 = X_neighbor^eq - X_current^eq (from mass k toward neighbor)
+        function add_spring_force!(neighbor_i, neighbor_j, R0, k_spring, alpha_spring, add_damping=false, damping_coeff=C_DAMPING)
             if 1 <= neighbor_i <= N && 1 <= neighbor_j <= N
                 neighbor_idx = lattice_idx(neighbor_i, neighbor_j)
-                pos_neighbor = pos[:, neighbor_idx]
+                u_neighbor = pos[:, neighbor_idx]
                 vel_neighbor = vel[:, neighbor_idx]
-                
-                # Spring force
-                force = spring_force_2d(pos_k, pos_neighbor, k_spring, alpha_spring)
+                force = spring_force_2d_geometric(pos_k, u_neighbor, R0, k_spring, alpha_spring)
                 dvel[:, k] += force
-                
-                # Damping force (only for nearest neighbors)
                 if add_damping
                     damping = damping_force_2d(vel_k, vel_neighbor, damping_coeff)
                     dvel[:, k] += damping
@@ -410,27 +403,14 @@ function lattice_2d_rhs_with_diagonals_and_backplate!(du, u, p, t)
             end
         end
         
-        # NEAREST NEIGHBOR SPRINGS (horizontal and vertical) WITH DAMPING
-        # Horizontal springs use base values (or could use material properties of both columns)
-        # For now, keep horizontal springs using base values for simplicity
-        add_spring_force!(i, j-1, K_COUPLING, ALPHA_COUPLING, true, C_DAMPING)  # left
-        add_spring_force!(i, j+1, K_COUPLING, ALPHA_COUPLING, true, C_DAMPING)  # right
-        
-        # Vertical springs use column-based material properties
+        # NN springs with damping; R0 scaled by grid spacing
+        add_spring_force!(i, j-1, [-Δ, 0.0], K_COUPLING, ALPHA_COUPLING, true, C_DAMPING)   # left
+        add_spring_force!(i, j+1, [Δ, 0.0], K_COUPLING, ALPHA_COUPLING, true, C_DAMPING)    # right
         k_col = get_column_k_coupling(j, material_order, materials)
         c_col = get_column_c_damping(j, material_order, materials)
         alpha_col = get_column_alpha_coupling(j, material_order, materials)
-        add_spring_force!(i-1, j, k_col, alpha_col, true, c_col)  # up
-        add_spring_force!(i+1, j, k_col, alpha_col, true, c_col)  # down
-        
-        # DIAGONAL SPRINGS (next-nearest neighbors in X pattern) WITHOUT DAMPING
-        # Use material properties from the column of the current mass
-        k_diag = get_column_k_diagonal(j, material_order, materials)
-        alpha_diag = get_column_alpha_diagonal(j, material_order, materials)
-        add_spring_force!(i-1, j-1, k_diag, alpha_diag, false)  # upper-left
-        add_spring_force!(i-1, j+1, k_diag, alpha_diag, false)  # upper-right
-        add_spring_force!(i+1, j-1, k_diag, alpha_diag, false)  # lower-left
-        add_spring_force!(i+1, j+1, k_diag, alpha_diag, false)  # lower-right
+        add_spring_force!(i-1, j, [0.0, -Δ], k_col, alpha_col, true, c_col)   # up
+        add_spring_force!(i+1, j, [0.0, Δ], k_col, alpha_col, true, c_col)    # down
         
         # WALL CONSTRAINT (rightmost column cannot pass through backplate)
         if j == N  # Rightmost column
@@ -478,7 +458,7 @@ end
 
 
 ########################################################################
-#  ENERGY & WORK CALCULATIONS FOR 2D MOTION WITH DIAGONAL SPRINGS AND BACKPLATE
+#  ENERGY & WORK CALCULATIONS (NN GEOMETRIC SPRINGS + BACKPLATE)
 ########################################################################
 function kinetic_energy_2d(vel_matrix)
     """
@@ -489,51 +469,39 @@ function kinetic_energy_2d(vel_matrix)
 end
 
 
-function potential_energy_2d_with_diagonals_and_backplate(pos_matrix)
+function potential_energy_2d_nn_backplate(pos_matrix; p=nothing)
     """
-    Calculate total potential energy for 2D exponential spring system with diagonal springs and backplate.
-    pos_matrix is 2×N matrix where each column is [x, y] for one mass.
-    
-    For exponential spring: U = (k/alpha) * (exp(alpha*|r|) - alpha*|r| - 1)
+    Potential energy for geometric NN springs (same s = |R|-|R0| as dynamics) plus wall penalty.
+    pos_matrix columns are nodal displacements. Pass p=(material_order=..., materials=...) to match a custom ordering.
     """
-    pe = 0.0
-    
-    # Helper function to calculate and add potential energy from spring
-    function add_spring_pe(pos1, pos2, k_spring, alpha_spring)
-        displacement = pos2 - pos1
-        distance = norm(displacement)
-        return (k_spring / alpha_spring) * (exp(alpha_spring * distance) - alpha_spring * distance - 1.0)
+    if p !== nothing && isa(p, NamedTuple) && haskey(p, :material_order)
+        material_order = p.material_order
+        materials = p.materials
+    else
+        material_order = collect(1:N)
+        materials = DEFAULT_MATERIALS
     end
-    
-    # Horizontal springs (nearest neighbors)
+    Δ = GRID_SPACING
+    pe = 0.0
+    function add_pe(uA, uB, R0, k_spring, alpha_spring)
+        R = R0 .+ (uB .- uA)
+        L = norm(R)
+        L0 = norm(R0)
+        s = L - L0
+        return (k_spring / alpha_spring) * (exp(alpha_spring * s) - alpha_spring * s - 1.0)
+    end
     for i in 1:N, j in 1:N-1
         k1 = lattice_idx(i, j)
         k2 = lattice_idx(i, j+1)
-        pe += add_spring_pe(pos_matrix[:, k1], pos_matrix[:, k2], K_COUPLING, ALPHA_COUPLING)
+        pe += add_pe(pos_matrix[:, k1], pos_matrix[:, k2], [Δ, 0.0], K_COUPLING, ALPHA_COUPLING)
     end
-    
-    # Vertical springs (nearest neighbors)
     for i in 1:N-1, j in 1:N
         k1 = lattice_idx(i, j)
         k2 = lattice_idx(i+1, j)
-        pe += add_spring_pe(pos_matrix[:, k1], pos_matrix[:, k2], K_COUPLING, ALPHA_COUPLING)
+        k_j = get_column_k_coupling(j, material_order, materials)
+        a_j = get_column_alpha_coupling(j, material_order, materials)
+        pe += add_pe(pos_matrix[:, k1], pos_matrix[:, k2], [0.0, Δ], k_j, a_j)
     end
-    
-    # Diagonal springs (next-nearest neighbors)
-    # Upper-left to lower-right diagonals
-    for i in 1:N-1, j in 1:N-1
-        k1 = lattice_idx(i, j)
-        k2 = lattice_idx(i+1, j+1)
-        pe += add_spring_pe(pos_matrix[:, k1], pos_matrix[:, k2], K_DIAGONAL, ALPHA_DIAGONAL)
-    end
-    
-    # Upper-right to lower-left diagonals
-    for i in 1:N-1, j in 2:N
-        k1 = lattice_idx(i, j)
-        k2 = lattice_idx(i+1, j-1)
-        pe += add_spring_pe(pos_matrix[:, k1], pos_matrix[:, k2], K_DIAGONAL, ALPHA_DIAGONAL)
-    end
-    
     # Wall potential energy (penalty for penetration)
     # This is not a spring, but a penalty term for masses that penetrate the wall
     equilibrium_x = (N - 1) * GRID_SPACING
@@ -673,39 +641,20 @@ end
 
 
 ########################################################################
-#  SPRING CONNECTIVITY INCLUDING DIAGONALS AND BACKPLATE
+#  SPRING CONNECTIVITY (NEAREST NEIGHBORS ONLY)
 ########################################################################
-function create_spring_connections_with_diagonals()
+function create_spring_connections_nn()
     """
-    Create list of spring connections for visualization, including diagonal springs.
-    Returns separate arrays for nearest-neighbor and diagonal connections.
-    Note: Backplate is a wall constraint, not connected by springs.
+    Undirected NN bonds for visualization (horizontal + vertical).
     """
-    nearest_neighbor_connections = Tuple{Int, Int}[]
-    diagonal_connections = Tuple{Int, Int}[]
-    
-    # Horizontal springs (nearest neighbors)
+    nn = Tuple{Int, Int}[]
     for i in 1:N, j in 1:N-1
-        push!(nearest_neighbor_connections, (lattice_idx(i, j), lattice_idx(i, j+1)))
+        push!(nn, (lattice_idx(i, j), lattice_idx(i, j+1)))
     end
-    
-    # Vertical springs (nearest neighbors)
     for i in 1:N-1, j in 1:N
-        push!(nearest_neighbor_connections, (lattice_idx(i, j), lattice_idx(i+1, j)))
+        push!(nn, (lattice_idx(i, j), lattice_idx(i+1, j)))
     end
-    
-    # Diagonal springs (next-nearest neighbors)
-    # Upper-left to lower-right diagonals
-    for i in 1:N-1, j in 1:N-1
-        push!(diagonal_connections, (lattice_idx(i, j), lattice_idx(i+1, j+1)))
-    end
-    
-    # Upper-right to lower-left diagonals
-    for i in 1:N-1, j in 2:N
-        push!(diagonal_connections, (lattice_idx(i, j), lattice_idx(i+1, j-1)))
-    end
-    
-    return nearest_neighbor_connections, diagonal_connections
+    return nn
 end
 
 
@@ -771,7 +720,7 @@ function run_simulation_with_material_ordering(material_order; materials=DEFAULT
     # Create parameters tuple
     p = (material_order=material_order, materials=materials)
     
-    prob = ODEProblem(lattice_2d_rhs_with_diagonals_and_backplate!, u0, tspan, p)
+    prob = ODEProblem(lattice_2d_rhs_nn_backplate!, u0, tspan, p)
     sol = solve(prob, Vern9();
                 reltol = REL_TOL, 
                 abstol = ABS_TOL,
@@ -812,22 +761,21 @@ function run_2d_simulation_with_configurable_force_and_backplate(; material_orde
     println("  Total masses: $(TOTAL_MASSES)")
     println("  DOF per mass: $(DOF_PER_MASS) (x, y)")
     println("  Total DOF: $(TOTAL_DOF)")
-    println("  Nearest neighbor spring constant: $(K_COUPLING) N")
-    println("  Nearest neighbor alpha: $(ALPHA_COUPLING) m⁻¹")
-    println("  Nearest neighbor damping: $(C_DAMPING) N·s/m")
-    println("  Diagonal spring constant: $(K_DIAGONAL) N")
-    println("  Diagonal alpha: $(ALPHA_DIAGONAL) m⁻¹")
+    println("  Horizontal NN spring constant: $(K_COUPLING) N (global)")
+    println("  Horizontal NN alpha: $(ALPHA_COUPLING) m⁻¹")
+    println("  Vertical NN: column-based (k, α, c) from material scaling or ordering")
+    println("  Nearest neighbor damping (NN bonds): base $(C_DAMPING) N·s/m (column-scaled)")
+    println("  (K_DIAGONAL / ALPHA_DIAGONAL in material tuples are unused — no diagonal springs)")
     println("  Wall stiffness: $(WALL_STIFFNESS) N/m")
     println("  Wall damping: $(WALL_DAMPING) N·s/m")
     println("  Backplate distance: $(BACKPLATE_DISTANCE) m")
     println("  Mass: $(MASS) kg")
     println("")
     println("Spring Network:")
-    println("  Nearest neighbors: horizontal & vertical connections (with damping)")
-    println("  Diagonal springs: X-pattern connections in each square (no damping)")
+    println("  Nearest neighbors only: horizontal & vertical geometric exponential springs (with damping)")
     println("  Wall constraint: rightmost column cannot pass through immovable backplate")
-    println("  Total connectivity: 8 neighbors per interior mass + wall constraint for rightmost column")
-    println("  Spring type: Exponential")
+    println("  Interior masses: up to 4 NN bonds + wall reaction if on right edge")
+    println("  Spring law: geometric stretch s = |R| - |R0|, F = k(exp(α*s) - 1) R̂")
     println("")
     println("Material Scaling (Column-Based):")
     println("  Material multiplier: $(MATERIAL_MULTIPLIER)×")
@@ -870,12 +818,14 @@ function run_2d_simulation_with_configurable_force_and_backplate(; material_orde
         p = (material_order=material_order, materials=materials)
     end
 
+    pe_total(pos) = potential_energy_2d_nn_backplate(pos; p=p)
+
     # Initial state: all masses at rest at equilibrium positions
     u0 = zeros(2 * TOTAL_DOF)
     tspan = (0.0, T_END)
 
     # Create and solve ODE problem
-    prob = ODEProblem(lattice_2d_rhs_with_diagonals_and_backplate!, u0, tspan, p)
+    prob = ODEProblem(lattice_2d_rhs_nn_backplate!, u0, tspan, p)
     sol = solve(prob, Vern9();
                 reltol = REL_TOL, 
                 abstol = ABS_TOL,
@@ -896,7 +846,7 @@ function run_2d_simulation_with_configurable_force_and_backplate(; material_orde
     
     # Create equilibrium grid, spring connections, and backplate positions
     equilibrium_grid = create_equilibrium_grid()
-    nearest_neighbor_connections, diagonal_connections = create_spring_connections_with_diagonals()
+    nearest_neighbor_connections = create_spring_connections_nn()
     backplate_positions = create_backplate_positions()
     
     # Set up GLMakie figure and layout
@@ -935,13 +885,7 @@ function run_2d_simulation_with_configurable_force_and_backplate(; material_orde
     # Plot nearest neighbor springs as lines
     for (k1, k2) in nearest_neighbor_connections
         spring_points = @lift(Point2f[($current_positions)[:, k1], ($current_positions)[:, k2]])
-        lines!(ax, spring_points, color = :blue, linewidth = SPRING_WIDTH, label = "Nearest Neighbor")
-    end
-    
-    # Plot diagonal springs as lines
-    for (k1, k2) in diagonal_connections
-        spring_points = @lift(Point2f[($current_positions)[:, k1], ($current_positions)[:, k2]])
-        lines!(ax, spring_points, color = :red, linewidth = DIAGONAL_SPRING_WIDTH, label = "Diagonal")
+        lines!(ax, spring_points, color = :blue, linewidth = SPRING_WIDTH, label = "NN spring")
     end
     
     # Plot backplate as a vertical line (wall, no springs)
@@ -1021,7 +965,7 @@ function run_2d_simulation_with_configurable_force_and_backplate(; material_orde
     energy_values = [let
         pos = reshape(view(sol.u[i], 1:TOTAL_DOF), 2, TOTAL_MASSES)
         vel = reshape(view(sol.u[i], TOTAL_DOF+1:2*TOTAL_DOF), 2, TOTAL_MASSES)
-        kinetic_energy_2d(vel) + potential_energy_2d_with_diagonals_and_backplate(pos)
+        kinetic_energy_2d(vel) + pe_total(pos)
     end for i in 1:length(sol.t)]
     
     work_line = fill(total_work, length(time_values))
@@ -1041,7 +985,7 @@ function run_2d_simulation_with_configurable_force_and_backplate(; material_orde
         vel = reshape(view(sol.u[$current_frame], TOTAL_DOF+1:2*TOTAL_DOF), 2, TOTAL_MASSES)
         
         ke = kinetic_energy_2d(vel)
-        pe = potential_energy_2d_with_diagonals_and_backplate(pos)
+        pe = pe_total(pos)
         total_e = ke + pe
         
         energy_dissipated = total_work - total_e
@@ -1057,10 +1001,8 @@ function run_2d_simulation_with_configurable_force_and_backplate(; material_orde
         - Components: $(round(fx_unit, digits=2)), $(round(fy_unit, digits=2))
         - Active: $(t <= F_ACTIVE_TIME ? "Yes" : "No")
         
-        Spring Network:
-        - Nearest: $(length(nearest_neighbor_connections))
-        - Diagonal: $(length(diagonal_connections))
-        - Total: $(length(nearest_neighbor_connections) + length(diagonal_connections))
+        Spring network:
+        - NN bonds (horizontal + vertical): $(length(nearest_neighbor_connections))
         - Wall constraint: prevents rightmost column from passing through backplate
         - Damping: $(C_DAMPING) N·s/m (nearest neighbors, column-based scaling)
         - Material scaling: $(MATERIAL_MULTIPLIER)× multiplier (columns 2-11 scaled)
@@ -1130,9 +1072,7 @@ function run_2d_simulation_with_configurable_force_and_backplate(; material_orde
     println("  Direction components: fx = $(round(fx_unit, digits=3)), fy = $(round(fy_unit, digits=3))")
     println()
     println("Spring Network Statistics:")
-    println("  Nearest neighbor springs: $(length(nearest_neighbor_connections))")
-    println("  Diagonal springs: $(length(diagonal_connections))")
-    println("  Total springs: $(length(nearest_neighbor_connections) + length(diagonal_connections))")
+    println("  Nearest-neighbor bonds: $(length(nearest_neighbor_connections))")
     println("  Damping coefficient: $(C_DAMPING) N·s/m (nearest neighbors)")
     println("  Wall constraint: prevents rightmost column from passing through backplate")
     println()
@@ -1170,7 +1110,7 @@ function save_animation_to_file(filename = "lattice_anim_11x11_with_backplate.mp
     # Solve the system
     u0 = zeros(2 * TOTAL_DOF)
     tspan = (0.0, T_END)
-    prob = ODEProblem(lattice_2d_rhs_with_diagonals_and_backplate!, u0, tspan)
+    prob = ODEProblem(lattice_2d_rhs_nn_backplate!, u0, tspan)
     sol = solve(prob, Vern9();
                 reltol = REL_TOL, 
                 abstol = ABS_TOL,
@@ -1179,7 +1119,7 @@ function save_animation_to_file(filename = "lattice_anim_11x11_with_backplate.mp
     
     # Create equilibrium grid, spring connections, and backplate positions
     equilibrium_grid = create_equilibrium_grid()
-    nearest_neighbor_connections, diagonal_connections = create_spring_connections_with_diagonals()
+    nearest_neighbor_connections = create_spring_connections_nn()
     backplate_positions = create_backplate_positions()
     
     # Extract position data
@@ -1233,12 +1173,6 @@ function save_animation_to_file(filename = "lattice_anim_11x11_with_backplate.mp
         for (k1, k2) in nearest_neighbor_connections
             spring_points = Point2f[current_positions[:, k1], current_positions[:, k2]]
             lines!(ax, spring_points, color = :blue, linewidth = SPRING_WIDTH)
-        end
-        
-        # Plot diagonal springs
-        for (k1, k2) in diagonal_connections
-            spring_points = Point2f[current_positions[:, k1], current_positions[:, k2]]
-            lines!(ax, spring_points, color = :red, linewidth = DIAGONAL_SPRING_WIDTH)
         end
         
         # Plot backplate as a vertical line (wall, no springs)
@@ -1314,7 +1248,7 @@ function save_animation_with_material_ordering(material_order; filename = "latti
     u0 = zeros(2 * TOTAL_DOF)
     tspan = (0.0, T_END)
     p = (material_order=material_order, materials=materials)
-    prob = ODEProblem(lattice_2d_rhs_with_diagonals_and_backplate!, u0, tspan, p)
+    prob = ODEProblem(lattice_2d_rhs_nn_backplate!, u0, tspan, p)
     sol = solve(prob, Vern9();
                 reltol = REL_TOL, 
                 abstol = ABS_TOL,
@@ -1327,7 +1261,7 @@ function save_animation_with_material_ordering(material_order; filename = "latti
     
     # Create equilibrium grid, spring connections, and backplate positions
     equilibrium_grid = create_equilibrium_grid()
-    nearest_neighbor_connections, diagonal_connections = create_spring_connections_with_diagonals()
+    nearest_neighbor_connections = create_spring_connections_nn()
     backplate_positions = create_backplate_positions()
     
     # Extract position data
@@ -1381,12 +1315,6 @@ function save_animation_with_material_ordering(material_order; filename = "latti
         for (k1, k2) in nearest_neighbor_connections
             spring_points = Point2f[current_positions[:, k1], current_positions[:, k2]]
             lines!(ax, spring_points, color = :blue, linewidth = SPRING_WIDTH)
-        end
-        
-        # Plot diagonal springs
-        for (k1, k2) in diagonal_connections
-            spring_points = Point2f[current_positions[:, k1], current_positions[:, k2]]
-            lines!(ax, spring_points, color = :red, linewidth = DIAGONAL_SPRING_WIDTH)
         end
         
         # Plot backplate as a vertical line (wall, no springs)

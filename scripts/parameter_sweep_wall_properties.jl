@@ -18,38 +18,13 @@ using Dates
 
 # Paths
 src_dir = joinpath(@__DIR__, "..", "src")
-deprecated_dir = joinpath(@__DIR__, "..", "Deprecated Scripts")
 figures_dir = joinpath(@__DIR__, "..", "papers", "figures")
 data_dir = joinpath(@__DIR__, "..", "data")
 mkpath(figures_dir)
 mkpath(data_dir)
 
-# Read simulation file and extract function definitions
-function load_simulation_code()
-    """Load simulation code without executing it."""
-    bp_file_path = joinpath(deprecated_dir, "lattice_simulation_with_backplate.jl")
-    
-    # Read file
-    bp_code = read(bp_file_path, String)
-    
-    # Split at execution marker to get only function definitions
-    bp_functions = split(bp_code, "#  RUN SIMULATION")[1]
-    
-    # Write temporary file with just the functions
-    temp_bp = tempname() * ".jl"
-    write(temp_bp, bp_functions)
-    
-    try
-        # Include the function definitions
-        include(temp_bp)
-    finally
-        # Clean up temp file
-        rm(temp_bp, force=true)
-    end
-end
-
-println("Loading simulation functions...")
-load_simulation_code()
+println("Loading 11×11 simulation (geometric NN springs + backplate)...")
+include(joinpath(src_dir, "lattice_simulation_11x11.jl"))
 
 # Base values
 const BASE_WALL_STIFFNESS = 10000.0
@@ -60,144 +35,96 @@ const MULTIPLIERS = [0.5, 1.0, 2.0, 5.0, 10.0]
 
 function create_modified_rhs(wall_stiffness, wall_damping)
     """
-    Create a modified ODE RHS function with specified wall parameters.
+    Create a modified ODE RHS matching `lattice_2d_rhs_nn_backplate!` but with custom wall (k, c).
     """
     function modified_rhs!(du, u, p, t)
-        # Extract positions and velocities from state vector
         pos = reshape(view(u, 1:TOTAL_DOF), 2, TOTAL_MASSES)
         vel = reshape(view(u, TOTAL_DOF+1:2*TOTAL_DOF), 2, TOTAL_MASSES)
-        
         dpos = reshape(view(du, 1:TOTAL_DOF), 2, TOTAL_MASSES)
         dvel = reshape(view(du, TOTAL_DOF+1:2*TOTAL_DOF), 2, TOTAL_MASSES)
-
-        # --- kinematics: dx/dt = v ---
         dpos .= vel
-
-        # --- initialize forces to zero ---
         dvel .= 0.0
-
-        # --- calculate spring forces between neighboring masses ---
+        material_order = collect(1:N)
+        materials = DEFAULT_MATERIALS
+        Δ = GRID_SPACING
         for k in 1:TOTAL_MASSES
             i, j = lattice_i(k), lattice_j(k)
             pos_k = pos[:, k]
             vel_k = vel[:, k]
-            
-            # Helper function to add spring force from neighbor
-            function add_spring_force!(neighbor_i, neighbor_j, k_spring, alpha_spring, add_damping=false, damping_coeff=C_DAMPING)
+            function add_spring_force!(neighbor_i, neighbor_j, R0, k_spring, alpha_spring, add_damping=false, damping_coeff=C_DAMPING)
                 if 1 <= neighbor_i <= N && 1 <= neighbor_j <= N
                     neighbor_idx = lattice_idx(neighbor_i, neighbor_j)
-                    pos_neighbor = pos[:, neighbor_idx]
+                    u_neighbor = pos[:, neighbor_idx]
                     vel_neighbor = vel[:, neighbor_idx]
-                    
-                    # Spring force
-                    force = spring_force_2d(pos_k, pos_neighbor, k_spring, alpha_spring)
+                    force = spring_force_2d_geometric(pos_k, u_neighbor, R0, k_spring, alpha_spring)
                     dvel[:, k] += force
-                    
-                    # Damping force (only for nearest neighbors)
                     if add_damping
-                        damping = damping_force_2d(vel_k, vel_neighbor, damping_coeff)
-                        dvel[:, k] += damping
+                        dvel[:, k] += damping_force_2d(vel_k, vel_neighbor, damping_coeff)
                     end
                 end
             end
-            
-            # NEAREST NEIGHBOR SPRINGS (horizontal and vertical) WITH DAMPING
-            # Horizontal springs use base values
-            add_spring_force!(i, j-1, K_COUPLING, ALPHA_COUPLING, true, C_DAMPING)  # left
-            add_spring_force!(i, j+1, K_COUPLING, ALPHA_COUPLING, true, C_DAMPING)  # right
-            
-            # Vertical springs use column-based material properties
-            k_col = get_column_k_coupling(j, MATERIAL_MULTIPLIER)
-            c_col = get_column_c_damping(j, MATERIAL_MULTIPLIER)
-            add_spring_force!(i-1, j, k_col, ALPHA_COUPLING, true, c_col)  # up
-            add_spring_force!(i+1, j, k_col, ALPHA_COUPLING, true, c_col)  # down
-            
-            # DIAGONAL SPRINGS (next-nearest neighbors in X pattern) WITHOUT DAMPING
-            add_spring_force!(i-1, j-1, K_DIAGONAL, ALPHA_DIAGONAL, false)  # upper-left
-            add_spring_force!(i-1, j+1, K_DIAGONAL, ALPHA_DIAGONAL, false)  # upper-right
-            add_spring_force!(i+1, j-1, K_DIAGONAL, ALPHA_DIAGONAL, false)  # lower-left
-            add_spring_force!(i+1, j+1, K_DIAGONAL, ALPHA_DIAGONAL, false)  # lower-right
-            
-            # WALL CONSTRAINT (rightmost column cannot pass through backplate)
-            if j == N  # Rightmost column
+            add_spring_force!(i, j-1, [-Δ, 0.0], K_COUPLING, ALPHA_COUPLING, true, C_DAMPING)
+            add_spring_force!(i, j+1, [Δ, 0.0], K_COUPLING, ALPHA_COUPLING, true, C_DAMPING)
+            k_col = get_column_k_coupling(j, material_order, materials)
+            c_col = get_column_c_damping(j, material_order, materials)
+            alpha_col = get_column_alpha_coupling(j, material_order, materials)
+            add_spring_force!(i-1, j, [0.0, -Δ], k_col, alpha_col, true, c_col)
+            add_spring_force!(i+1, j, [0.0, Δ], k_col, alpha_col, true, c_col)
+            if j == N
                 equilibrium_x = (N - 1) * GRID_SPACING
                 backplate_x = equilibrium_x + BACKPLATE_DISTANCE
-                current_x = equilibrium_x + pos_k[1]  # absolute x position
-                
-                # If mass tries to move past the backplate, apply repulsive force
+                current_x = equilibrium_x + pos_k[1]
                 if current_x > backplate_x
                     penetration = current_x - backplate_x
-                    # Use specified wall stiffness
-                    wall_force_x = -wall_stiffness * penetration
-                    dvel[1, k] += wall_force_x
-                    
-                    # Damping when colliding with wall (only x-component)
-                    if vel_k[1] > 0  # Moving toward wall
+                    dvel[1, k] += -wall_stiffness * penetration
+                    if vel_k[1] > 0
                         dvel[1, k] -= wall_damping * vel_k[1]
                     end
                 end
             end
         end
-
-        # --- CONFIGURABLE EXTERNAL DRIVING FORCE ---
         if t <= F_ACTIVE_TIME
-            fx, fy = calculate_force_components(F_MAG, FORCE_ANGLE_DEGREES)
-            target_idx = lattice_idx(FORCE_TARGET_ROW, FORCE_TARGET_COL)
-            dvel[1, target_idx] += fx
-            dvel[2, target_idx] += fy
+            fx_unit, fy_unit = calculate_force_components(1.0, FORCE_ANGLE_DEGREES)
+            for row in 1:N
+                force_mag = get_distributed_force_magnitude(row)
+                target_idx = lattice_idx(row, 1)
+                dvel[1, target_idx] += force_mag * fx_unit
+                dvel[2, target_idx] += force_mag * fy_unit
+            end
         end
-
-        # --- divide by mass to obtain accelerations ---
         dvel ./= MASS
-        
         return nothing
     end
-    
     return modified_rhs!
 end
 
 function potential_energy_with_wall_params(pos_matrix, wall_stiffness)
     """
-    Calculate potential energy with specified wall stiffness.
+    Geometric NN spring PE (same as `potential_energy_2d_nn_backplate`) plus wall penalty with given stiffness.
     """
     pe = 0.0
-    
-    # Helper function to calculate and add potential energy from spring
-    function add_spring_pe(pos1, pos2, k_spring, alpha_spring)
-        displacement = pos2 - pos1
-        distance = norm(displacement)
-        return (k_spring / alpha_spring) * (exp(alpha_spring * distance) - alpha_spring * distance - 1.0)
+    material_order = collect(1:N)
+    materials = DEFAULT_MATERIALS
+    Δ = GRID_SPACING
+    function add_pe(uA, uB, R0, k_spring, alpha_spring)
+        R = R0 .+ (uB .- uA)
+        L = norm(R)
+        L0 = norm(R0)
+        s = L - L0
+        return (k_spring / alpha_spring) * (exp(alpha_spring * s) - alpha_spring * s - 1.0)
     end
-    
-    # Horizontal springs (nearest neighbors)
     for i in 1:N, j in 1:N-1
         k1 = lattice_idx(i, j)
         k2 = lattice_idx(i, j+1)
-        pe += add_spring_pe(pos_matrix[:, k1], pos_matrix[:, k2], K_COUPLING, ALPHA_COUPLING)
+        pe += add_pe(pos_matrix[:, k1], pos_matrix[:, k2], [Δ, 0.0], K_COUPLING, ALPHA_COUPLING)
     end
-    
-    # Vertical springs (nearest neighbors)
     for i in 1:N-1, j in 1:N
         k1 = lattice_idx(i, j)
         k2 = lattice_idx(i+1, j)
-        pe += add_spring_pe(pos_matrix[:, k1], pos_matrix[:, k2], K_COUPLING, ALPHA_COUPLING)
+        k_j = get_column_k_coupling(j, material_order, materials)
+        a_j = get_column_alpha_coupling(j, material_order, materials)
+        pe += add_pe(pos_matrix[:, k1], pos_matrix[:, k2], [0.0, Δ], k_j, a_j)
     end
-    
-    # Diagonal springs (next-nearest neighbors)
-    # Upper-left to lower-right diagonals
-    for i in 1:N-1, j in 1:N-1
-        k1 = lattice_idx(i, j)
-        k2 = lattice_idx(i+1, j+1)
-        pe += add_spring_pe(pos_matrix[:, k1], pos_matrix[:, k2], K_DIAGONAL, ALPHA_DIAGONAL)
-    end
-    
-    # Upper-right to lower-left diagonals
-    for i in 1:N-1, j in 2:N
-        k1 = lattice_idx(i, j)
-        k2 = lattice_idx(i+1, j-1)
-        pe += add_spring_pe(pos_matrix[:, k1], pos_matrix[:, k2], K_DIAGONAL, ALPHA_DIAGONAL)
-    end
-    
     # Wall potential energy (penalty for penetration)
     equilibrium_x = (N - 1) * GRID_SPACING
     backplate_x = equilibrium_x + BACKPLATE_DISTANCE
@@ -238,8 +165,7 @@ function run_simulation_with_wall_params(wall_stiffness, wall_damping)
         error("Solver failed: $(sol.retcode)")
     end
     
-    # Calculate total work done by external force
-    total_work = work_done_2d_configurable(sol)
+    total_work = work_done_2d_distributed(sol)
     
     # Calculate final energy
     pos_final = reshape(view(sol.u[end], 1:TOTAL_DOF), 2, TOTAL_MASSES)
