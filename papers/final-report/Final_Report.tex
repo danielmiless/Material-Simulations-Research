@@ -39,14 +39,14 @@ morestring=[m]{'}{'},%
 
 \title{Optimization of Blast-Loaded Sandwich Plates Using a Spring-Mass Model}
 \author{Daniel Miles\\Research Advisor: Dr. Romesh Batra}
-\date{March 25, 2026}
+\date{April 2, 2026}
 
 \begin{document}
 
 \maketitle
 
 \begin{abstract}
-\noindent We use a spring-mass system to analyze transient deformations of a sandwich plate impact loaded on the top surface. It is assumed that each layer can be simulated as an assembly of an 11×11 spring-mass-dashpot system. We develop and analyze an 11×11 two-dimensional spring-mass-dashpot network (121 masses, 242 degrees of freedom) featuring springs with exponential force--stretch relations, viscous damping, and an immovable backplate constraint. The system is subjected to distributed external loading, and the dynamic response is solved using higher-order numerical integration methods. Energy balance verification is used to confirm numerical solution quality, with work--energy relationships accounting for energy dissipation through damping. We then study how the ordering of core layers affects the peak force transferred to the back surface, motivated by the need to optimize protective sandwich-plate configurations. We formulate the layer ordering as a permutation optimization problem and implement six optimization algorithms in Julia (Metaheuristics.jl, BlackBoxOptim.jl, and Optim.jl). With 100--102 function evaluations (each requiring a full transient simulation), we obtain configurations that reduce the peak transmitted force relative to simple baseline orderings. Expected end-of-semester outcomes include a verified spring-mass-dashpot model for a representative impact loading scenario, a documented optimization workflow for layer ordering, and a consolidated report describing the governing equations, verification, and optimization results.
+\noindent We use a spring-mass system to analyze transient deformations of a sandwich plate impact loaded on the top surface. Each layer is represented as an 11×11 spring-mass-dashpot assembly. The production model is a two-dimensional nearest-neighbor lattice (121 masses, 242 degrees of freedom): exponential springs act along the \emph{current} bond chord with geometric stretch $s = L - L_0$ where $L=\|\mathbf{R}\|$, diagonal springs are not used, and viscous damping acts on nearest-neighbor relative velocities. An immovable backplate constrains the right edge; distributed loading drives the left edge. The transient problem is integrated with a high-order Runge--Kutta method, and energy balance checks link external work, mechanical energy, and dissipation. We minimize the peak backplate reaction force over column-wise material permutations using six algorithms from Metaheuristics.jl, BlackBoxOptim.jl, and Optim.jl, with about $100$--$103$ expensive simulations per run. Under the reported settings, simulated annealing (Optim.jl) attains the lowest peak force ($\sim 1013$~N), several metaheuristics cluster near $\sim 1014$--$1015$~N, and the adaptive differential-evolution implementation in BlackBoxOptim.jl is slightly worse in this run ($\sim 1017$~N), while all methods improve on a stiffest-to-softest sequential baseline ($\sim 1031$~N). The report gives the governing equations, verification, dynamic response, and optimizer comparison for this workflow.
 \end{abstract}
 
 \section{Introduction}
@@ -235,6 +235,8 @@ m_2 \frac{d\mathbf{v}_2}{dt} &= -k \frac{\mathbf{x}_2 - \mathbf{x}_1}{|\mathbf{x
 \mathbf{v}_1(0) &= [0, 0]^T, \quad \mathbf{v}_2(0) = [0, 0]^T
 \end{align}
 
+\noindent \textbf{Scalar warm-up vs.\ lattice implementation.} Equation~\eqref{eq:exponential_force} expresses the spring stretch through $|\mathbf{x}_2-\mathbf{x}_1|$ measured from a common origin. In the grid models below, each node carries a \emph{displacement} $\mathbf{u}_{i,j}$ from a fixed reference location $\mathbf{X}_{i,j}^{\mathrm{eq}}$ on the undeformed grid. The exponential law is applied to the geometric chord between nodes, $s = \|\mathbf{R}\|-\|\mathbf{R}_0\|$, with the force directed along $\mathbf{R}/\|\mathbf{R}\|$ (Section~\ref{subsec:geom_nn_bonds}); this reduces to the same scalar picture for collinear motion along a single bond.
+
 \subsection{5×5 Lattice System}
 
 \noindent We now extend the two-mass system to a 5×5 square lattice containing 25 masses arranged in a regular grid. Each mass is connected only to its nearest neighbors (horizontal and vertical); this matches the connectivity used in the 11×11 simulation code.
@@ -323,7 +325,37 @@ m \frac{d\mathbf{v}_{i,j}}{dt} = \sum_{\text{NN}} \mathbf{F}_{spring} + \sum_{\t
     \item Grid spacing: $\Delta = 1.0$ m
 \end{itemize}
 
-\noindent \textbf{Material Property Scaling:}
+\subsubsection{Geometric nearest-neighbor bonds: kinematics, force, and energy}
+\label{subsec:geom_nn_bonds}
+
+\noindent Let $\mathbf{X}_{i,j}^{\mathrm{eq}}$ be the fixed reference position of node $(i,j)$ on the undeformed square grid and let $\mathbf{u}_{i,j}$ be its displacement, so the current position is $\mathbf{X}_{i,j} = \mathbf{X}_{i,j}^{\mathrm{eq}} + \mathbf{u}_{i,j}$. Consider a nearest-neighbor bond from node $A$ to node $B$. The reference chord and deformed chord are
+\begin{equation}
+\mathbf{R}_0 = \mathbf{X}_B^{\mathrm{eq}} - \mathbf{X}_A^{\mathrm{eq}}, \qquad
+\mathbf{R} = \mathbf{X}_B - \mathbf{X}_A = \mathbf{R}_0 + (\mathbf{u}_B - \mathbf{u}_A),
+\label{eq:geom_Rdef}
+\end{equation}
+with lengths $L_0 = \|\mathbf{R}_0\|$ and $L = \|\mathbf{R}\|$, unit vector $\hat{\mathbf{R}} = \mathbf{R}/L$, and scalar extension $s = L - L_0$. \newline
+
+\noindent \textbf{Spring force.} For material parameters $(k,\alpha)$ attached to that bond, the magnitude $k\bigl(e^{\alpha s}-1\bigr)$ matches the small-strain slope used in the scalar two-mass example ($e^{\alpha s}-1 \sim \alpha s$). The force on $A$ exerted by the spring toward $B$ is taken as
+\begin{equation}
+\mathbf{F}_{A \leftarrow B}^{\mathrm{spring}} = k\left(e^{\alpha s}-1\right)\hat{\mathbf{R}},
+\label{eq:geom_Fspring}
+\end{equation}
+and Newton's third law gives $\mathbf{F}_{B \leftarrow A}^{\mathrm{spring}} = -\mathbf{F}_{A \leftarrow B}^{\mathrm{spring}}$. Compression ($s<0$) reverses the sign of the scalar factor, so the bond pushes outward along $\hat{\mathbf{R}}$. \newline
+
+\noindent \textbf{Why $\mathbf{R}$ rather than $\mathbf{u}_B-\mathbf{u}_A$ alone.} The relative displacement $\mathbf{u}_B-\mathbf{u}_A$ omits the rest direction $\mathbf{R}_0$. Under shear-like motion, $\mathbf{u}_B-\mathbf{u}_A$ need not align with the physical chord between $\mathbf{X}_A$ and $\mathbf{X}_B$; using $\mathbf{R}$ ensures tension--compression acts along the line joining the endpoints in the current configuration, which is the standard geometric spring model. \newline
+
+\noindent \textbf{Potential energy.} For dynamics--energy consistency, each bond contributes
+\begin{equation}
+U_{\mathrm{bond}}(s) = \frac{k}{\alpha}\left(e^{\alpha s} - \alpha s - 1\right),
+\label{eq:geom_potential_bond}
+\end{equation}
+so that $-\partial U_{\mathrm{bond}}/\partial \mathbf{X}_A$ reproduces the conservative part of Eq.~\eqref{eq:geom_Fspring} along the bond. The total elastic potential is the sum of $U_{\mathrm{bond}}$ over all nearest-neighbor links (horizontal and vertical), using the same $(k,\alpha)$ routing as in the force calculation, plus any wall penalty used in the implementation. \newline
+
+\noindent \textbf{Damping.} As in the 5×5 development, viscous damping forces on each bond are proportional to the relative velocity $\mathbf{v}_B-\mathbf{v}_A$ and do not derive from $U_{\mathrm{bond}}$. \newline
+
+\paragraph{Material property scaling.}
+\noindent
 
 \noindent Each column $j$ can have different material properties. The material properties for column $j$ are determined by a material ordering $\mathbf{p} = [p_1, p_2, \ldots, p_{11}]$, where $p_j$ specifies which material (1-11) is placed in column $j$. \newline
 
@@ -740,22 +772,15 @@ E_{dissipated}(t) = \int_0^t \sum_{\text{all dampers}} c |\mathbf{v}_i(\tau) - \
 
 \subsection{Reproducibility Details}
 
-\noindent To ensure reproducibility, the following configuration details are provided:
-\begin{itemize}
-    \item \textbf{Random seeds}: Metaheuristics.jl algorithms used seed = 1 for random number generation. BlackBoxOptim and Optim.jl use their default random number generators (not explicitly seeded in this run).
-    \item \textbf{Algorithm parameters}: 
-    \begin{itemize}
-        \item Metaheuristics algorithms: Population size adaptively set based on max\_evaluations (typically 10-50), with default mutation and crossover rates
-        \item BlackBoxOptim: Adaptive DE/rand/1/bin strategy with automatic parameter adaptation
-        \item Optim.jl: Simulated Annealing with default cooling schedule
-    \end{itemize}
-    \item \textbf{Software versions}: Julia optimization packages used include Metaheuristics.jl, BlackBoxOptim.jl, and Optim.jl (specific versions not recorded, but code is compatible with recent stable releases)
-    \item \textbf{Simulation parameters}: Fixed simulation parameters as defined in the lattice simulation code (see Table~\ref{tab:material_properties} for material properties)
-\end{itemize}
+\noindent The comparison run was executed with Julia~1.11.6, eight Julia threads, repository commit \texttt{7b676bda164d832e936870eabf663d263c061be2}, and a per-optimizer evaluation cap of $100$ (with $101$--$103$ evaluations recorded for some libraries because of final bookkeeping calls). Metaheuristics.jl algorithms used \texttt{seed = 1}. BlackBoxOptim.jl and Optim.jl relied on their default random streams. Outputs for this report are archived under \texttt{papers/final-report/runs/my\_overnight\_run/}. \newline
+
+\noindent Algorithm choices in code: Metaheuristics.jl (differential evolution, particle swarm, evolutionary centers, genetic algorithm); BlackBoxOptim.jl (adaptive differential evolution); Optim.jl (simulated annealing). \newline
+
+\noindent \textbf{Simulation parameters}: Fixed settings as in the lattice code (Table~\ref{tab:material_properties}).
 
 \subsection{Parallel Execution}
 
-\noindent All optimizers run in parallel using Julia's \texttt{@async} tasks, providing approximately 5-7× speedup compared to sequential execution. The total optimization time is approximately the time of the slowest optimizer, not the sum of all optimizers.
+\noindent All six optimizers run concurrently using Julia task parallelism (one task per optimizer). Wall-clock time is therefore set by the slowest optimizer ($\sim 9050$~s), not by the sum of individual runtimes.
 
 \section{Results}
 \label{sec:results}
@@ -764,30 +789,18 @@ E_{dissipated}(t) = \int_0^t \sum_{\text{all dampers}} c |\mathbf{v}_i(\tau) - \
 
 \noindent All optimizers were run with:
 \begin{itemize}
-    \item Maximum evaluations: 100-102 (algorithm-dependent)
+    \item Evaluation cap: $100$ objective calls (Metaheuristics.jl respected exactly $100$; Optim.jl and BlackBoxOptim.jl logged $101$ and $103$ calls, respectively)
     \item System size: 11×11 lattice (121 masses, 242 DOF)
-    \item Simulation time: 8 seconds per evaluation
+    \item Model time per evaluation: $8$~s simulated time ($T_{\mathrm{end}}$)
 \end{itemize}
 
 \subsection{Baseline Comparison}
 
-\noindent To contextualize the optimization results, we compare against a simple baseline: sequential material ordering $[1, 2, 3, \ldots, 11]$, which places materials in order from stiffest to softest. While this heuristic seems intuitive (stiff materials first), the optimized orderings demonstrate that material interactions and wave propagation effects create complex dependencies that require optimization. \newline
+\noindent We compare optimizers against the sequential ordering $[1, 2, \ldots, 11]$ (stiffest material in column~1 through softest in column~11), evaluated with the same simulation settings as each optimization trial. Under the current geometric nearest-neighbor model, this baseline yields a peak backplate force of $1030.99$~N. \newline
 
-\noindent The sequential baseline ordering $[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]$ was evaluated and produced a peak force of 1747.78 N. This provides a quantitative comparison point for the optimization results:
-\begin{itemize}
-    \item \textbf{Baseline performance}: Sequential ordering achieves 1747.78 N, which is better than the worst optimizer (Optim: 2912.76 N) but worse than all other optimizers
-    \item \textbf{Optimization improvement}: The best optimized solution (BlackBoxOptim: 1497.89 N) represents a 14.3\% reduction compared to the baseline, demonstrating that optimization provides meaningful improvement over simple heuristics
-    \item \textbf{Comparison with optimizers}: 
-    \begin{itemize}
-        \item BlackBoxOptim: 14.3\% better than baseline
-        \item Metaheuristics\_PSO: 10.0\% better than baseline
-        \item Metaheuristics\_ECA: 7.6\% better than baseline
-        \item Metaheuristics\_DE: 7.4\% better than baseline
-        \item Metaheuristics\_GA: 5.6\% better than baseline
-        \item Optim: 66.7\% worse than baseline (indicating poor performance)
-    \end{itemize}
-    \item \textbf{Physical insights}: All top-performing optimizers place material 1 (stiffest) in the first column, confirming that stiff materials near the impact side are beneficial, consistent with the baseline approach. However, the optimal orderings are not simply sorted by stiffness, indicating that material interactions and wave propagation effects create complex dependencies that require optimization rather than simple sorting heuristics.
-\end{itemize}
+\noindent Every algorithm in Table~\ref{tab:optimizer_comparison} beats that baseline: the best run (Optim.jl, simulated annealing) reaches $1012.99$~N ($\sim 1.7$\% reduction), while the weakest run in this study (BlackBoxOptim.jl) still reaches $1017.16$~N ($\sim 1.3$\% reduction). Metaheuristics\_PSO lies near $1014.41$~N, and differential evolution, ECA, and GA share the same best value $1014.61$~N ($\sim 1.6$\% reduction). The spread between the best and worst optimizer outcomes is only $\sim 0.4$\% of the best peak force, so all six methods identify high-quality permutations under a budget of $\sim 100$ evaluations. \newline
+
+\noindent The best-found permutation $[11, 10, 9, 8, 7, 6, 4, 3, 2, 1, 5]$ places the softest catalog material in column~1; this shows that a naive ``stiffest-first'' column ordering is not optimal for peak-force minimization in this model, even though it is a reasonable heuristic starting point.
 
 \subsection{Performance Comparison}
 
@@ -795,18 +808,18 @@ E_{dissipated}(t) = \int_0^t \sum_{\text{all dampers}} c |\mathbf{v}_i(\tau) - \
 
 \begin{table}[!h]
 \centering
-\caption{Comparison of Optimization Algorithms for Material Ordering}
+\caption{Optimization algorithms for material ordering (same simulation budget per run, parallel execution across optimizers). ``Best found at eval'' is the evaluation index of the lowest peak force in the saved convergence trace.}
 \label{tab:optimizer_comparison}
 \begin{tabular}{lcccc}
 \toprule
-Optimizer & Peak Force (N) & Evaluations & Best Found at Eval & Time (s) \\
+Optimizer & Peak Force (N) & Evaluations & Best found at eval & Time (s) \\
 \midrule
-\textbf{BlackBoxOptim} & \textbf{1497.89} & 102 & 4 & 26615.8 \\
-Metaheuristics\_PSO & 1571.88 & 100 & 79 & 16898.9 \\
-Metaheuristics\_ECA & 1615.21 & 100 & 47 & 8600.1 \\
-Metaheuristics\_DE & 1618.89 & 100 & 98 & 12952.8 \\
-Metaheuristics\_GA & 1648.93 & 100 & 88 & 4274.0 \\
-Optim & 2912.76 & 101 & 96 & 22057.1 \\
+\textbf{Optim.jl} (simulated annealing) & \textbf{1012.99} & 101 & 89 & 6601.1 \\
+Metaheuristics\_PSO & 1014.41 & 100 & 50 & 5319.5 \\
+Metaheuristics\_DE & 1014.61 & 100 & 28 & 4055.6 \\
+Metaheuristics\_ECA & 1014.61 & 100 & 28 & 2736.1 \\
+Metaheuristics\_GA & 1014.61 & 100 & 28 & 1379.6 \\
+BlackBoxOptim.jl & 1017.16 & 103 & 33 & 9051.1 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -814,93 +827,57 @@ Optim & 2912.76 & 101 & 96 & 22057.1 \\
 \subsection{Key Findings}
 
 \begin{enumerate}
-    \item \textbf{Best Solution}: BlackBoxOptim found the best solution with a peak force of 1497.89 N, representing a 48.6\% reduction compared to the worst solution (Optim: 2912.76 N).
-    
-    \item \textbf{Computational Efficiency}: Metaheuristics\_GA was the fastest optimizer, completing 100 evaluations in 4274 seconds (71 minutes), while BlackBoxOptim took 26616 seconds (7.4 hours) for 102 evaluations.
-    
-    \item \textbf{Solution Quality Ranking}:
-    \begin{enumerate}
-        \item BlackBoxOptim: 1497.89 N (best)
-        \item Metaheuristics\_PSO: 1571.88 N
-        \item Metaheuristics\_ECA: 1615.21 N
-        \item Metaheuristics\_DE: 1618.89 N
-        \item Metaheuristics\_GA: 1648.93 N
-        \item Optim: 2912.76 N (worst)
-    \end{enumerate}
-    
-    \item \textbf{Time Efficiency Ranking} (evaluations per hour):
-    \begin{enumerate}
-        \item Metaheuristics\_GA: 84.2 evaluations/hour
-        \item Metaheuristics\_ECA: 41.9 evaluations/hour
-        \item Metaheuristics\_DE: 27.8 evaluations/hour
-        \item Metaheuristics\_PSO: 21.3 evaluations/hour
-        \item Optim: 16.5 evaluations/hour
-        \item BlackBoxOptim: 13.8 evaluations/hour
-    \end{enumerate}
-    
-    \item \textbf{Best Material Orderings}: The optimal configurations found by the top performers:
-    \begin{itemize}
-        \item \textbf{BlackBoxOptim}: $[1, 7, 5, 9, 3, 6, 11, 8, 2, 4, 10]$ (found at evaluation 4)
-        \item \textbf{Metaheuristics\_PSO}: $[1, 11, 4, 6, 2, 8, 5, 10, 3, 7, 9]$ (found at evaluation 79)
-        \item \textbf{Metaheuristics\_ECA}: $[1, 3, 11, 9, 10, 6, 2, 7, 5, 4, 8]$ (found at evaluation 47)
-    \end{itemize}
-    
-    Notably, all top performers place material 1 (the base material with highest stiffness) in the first column, suggesting that placing stiffer materials near the impact side may be beneficial for force reduction. BlackBoxOptim found its best solution very early (evaluation 4), while other optimizers required more exploration.
-    
-    \item \textbf{Statistical Considerations}: This study presents results from a single optimization run for each algorithm. While this provides valuable insights into algorithm performance, it is important to note the statistical implications:
-    \begin{itemize}
-        \item \textbf{Single-run limitation}: The results represent one realization of each stochastic algorithm. Multiple independent runs would provide confidence intervals and allow statistical significance testing.
-        \item \textbf{Algorithm variability}: Stochastic algorithms may produce different results across runs due to random initialization and search strategies. The observed performance differences may vary with different random seeds.
-        \item \textbf{Convergence reliability}: The early convergence of BlackBoxOptim (evaluation 4) suggests either exceptional performance or potential sensitivity to initial conditions that warrants further investigation.
-        \item \textbf{Recommended future work}: Multiple independent runs (e.g., 10-30 runs per algorithm) would enable statistical analysis including mean performance, standard deviation, and significance testing to determine if observed differences are statistically meaningful.
-    \end{itemize}
+    \item \textbf{Best solution}: Optim.jl (simulated annealing) attained the lowest peak force, $1012.99$~N, at evaluation~89 of~101.
+    \item \textbf{Tight cluster}: Metaheuristics\_DE, \_ECA, and \_GA agree to the reported precision ($1014.61$~N) and share the permutation $[9, 8, 11, 6, 5, 4, 7, 10, 3, 2, 1]$. Metaheuristics\_PSO is marginally better ($1014.41$~N) with $[9, 11, 8, 5, 4, 6, 7, 10, 3, 2, 1]$. BlackBoxOptim.jl is the weakest in this run ($1017.16$~N) but still improves on the sequential baseline.
+    \item \textbf{Wall time per optimizer}: The fastest single-optimizer wall time is Metaheuristics\_GA ($\sim 1380$~s), while BlackBoxOptim.jl is the slowest ($\sim 9050$~s). Because optimizers ran in parallel, the full comparison completed in roughly the latter duration ($\sim 2.5$~h).
+    \item \textbf{Throughput}: Evaluations per hour (from Table~\ref{tab:optimizer_comparison}) span roughly $40$--$260$, reflecting library overhead on top of the $\sim 17$~s simulation each objective call requires.
+    \item \textbf{Statistical considerations}: Each entry is a single stochastic run. Repeating with alternative seeds would quantify variance; the small spread in peak forces here suggests the landscape is fairly flat near good permutations under the present budget.
 \end{enumerate}
 
 \begin{figure}[!h]
 \centering
 \includegraphics[width=0.75\textwidth]{../figures/best_optimized_configuration_thumbnail.png}
-\caption{Initial state of the best optimized configuration found by BlackBoxOptim (peak force: 1497.89 N). The 11×11 lattice shows the optimal material ordering $[1, 7, 5, 9, 3, 6, 11, 8, 2, 4, 10]$ across columns, with material 1 (highest stiffness) placed in the first column. The full animation demonstrates the dynamic response of this optimized configuration under distributed loading.}
+\caption{Undeformed lattice with the best-found column ordering from Optim.jl (peak force $1012.99$~N): $[11, 10, 9, 8, 7, 6, 4, 3, 2, 1, 5]$ (left to right). Marker colors distinguish catalog materials; the highlighted node is a representative left-edge load location (row~6, column~1).}
 \label{fig:best_optimized_configuration}
 \end{figure}
 
-\noindent Figure~\ref{fig:best_optimized_configuration} shows the initial configuration of the best optimized material ordering found by BlackBoxOptim. This visualization illustrates the spatial arrangement of materials across the lattice columns, with the optimal ordering achieving a peak force of 1497.89 N.
+\noindent Figure~\ref{fig:best_optimized_configuration} encodes each column's assigned catalog material before motion begins; the ordering is not monotone in stiffness, consistent with the baseline comparison above.
 
 \subsection{Convergence Analysis}
 
-\noindent Figure~\ref{fig:convergence_comparison} shows the convergence behavior of all optimizers, plotting peak force versus function evaluations on a logarithmic scale. The plot reveals several important patterns:
+\noindent Figure~\ref{fig:convergence_comparison} plots the peak force returned by every objective evaluation versus evaluation index on a logarithmic ordinate. Figure~\ref{fig:convergence_best_so_far} plots the running minimum (best-so-far) peak force, which is monotone by construction. \newline
 
 \begin{itemize}
-    \item \textbf{High Variability}: All optimizers show significant variability in evaluation values, which is expected for permutation optimization problems with a large search space.
-    
-    \item \textbf{Exploration vs. Exploitation}: The Metaheuristics algorithms (DE, PSO, ECA, GA) show more consistent exploration patterns, while BlackBoxOptim and Optim show more erratic behavior with occasional very good solutions.
-    
-    \item \textbf{Early Convergence}: Some optimizers (particularly Metaheuristics\_PSO and Metaheuristics\_ECA) find good solutions relatively early in the optimization process, while others (like Optim) struggle to find competitive solutions throughout the run.
-    
-    \item \textbf{Best-So-Far Behavior}: While not shown in the raw evaluation plot, the best-so-far convergence (monotonically improving) would show smoother curves, making it easier to compare optimizer performance.
-    
-    \item \textbf{Initial Overlap}: In the early stages of the convergence plot (evaluations 1-10), only three optimizer lines are clearly visible (Optim in red, BlackBoxOptim in blue, and Metaheuristics\_PSO in orange). The Metaheuristics\_DE, Metaheuristics\_ECA, and Metaheuristics\_GA lines (purple, brown, and green, respectively) appear to start later because these population-based algorithms initialize their populations with the same random seed, resulting in identical initial evaluation values. The lines become distinguishable once the algorithms begin their evolutionary operations and the populations diverge, typically after the initial population evaluation phase.
-    
-    \item \textbf{Evaluation Count Variations}: While the maximum evaluation limit was set to 100, some optimizers completed 101-102 evaluations. BlackBoxOptim performed 102 evaluations and Optim performed 101 evaluations. This occurs because the evaluation limit is enforced within the objective function, and some optimizers may perform a final convergence check or solution verification evaluation after reaching the limit. The Metaheuristics algorithms (DE, ECA, GA, PSO) strictly adhered to the 100-evaluation limit due to their internal stopping criteria that respect the \texttt{f\_calls\_limit} parameter.
+    \item \textbf{Scatter in raw scores}: Individual evaluations fluctuate because the encoded permutation can change abruptly; poor local moves temporarily raise the peak force even when the best-so-far curve improves.
+    \item \textbf{Population methods}: Metaheuristics\_DE, \_ECA, and \_GA share the same seed for population initialization, so their traces overlap at the start before diverging.
+    \item \textbf{Late best for Optim}: Simulated annealing's best value appears near evaluation~89, showing that good permutations are still discovered late in the budget.
+    \item \textbf{Tight final band}: All methods finish within $\sim 4$~N of one another, consistent with a shallow objective near good permutations.
+    \item \textbf{Evaluation counts}: Metaheuristics runs report exactly $100$ calls; Optim.jl and BlackBoxOptim.jl incur one or a few extra bookkeeping evaluations ($101$ and $103$).
 \end{itemize}
 
 \begin{figure}[!h]
 \centering
 \includegraphics[width=0.95\textwidth]{../figures/optimizer_convergence_comparison.png}
-\caption{Convergence comparison of all optimizers showing peak force versus function evaluations on a logarithmic scale. The plot displays raw evaluation values (not best-so-far), revealing the exploration behavior of each algorithm. Key observations: (1) BlackBoxOptim (blue) found its best solution very early (evaluation 4) at 1497.89 N, then continued exploring; (2) Metaheuristics\_PSO (orange) shows consistent improvement, finding its best solution at evaluation 79; (3) Metaheuristics algorithms (DE, ECA, GA) start with identical initial values due to shared random seed, then diverge as their populations evolve; (4) Optim (red) shows high variability and struggles to find competitive solutions throughout the run. The logarithmic scale emphasizes early optimization behavior, which is critical for understanding algorithm convergence characteristics.}
+\caption{Raw peak force versus evaluation index (log scale on the vertical axis). Colors distinguish the six libraries; overlapping early points for DE/ECA/GA reflect identical population initialization.}
 \label{fig:convergence_comparison}
+\end{figure}
+
+\begin{figure}[!h]
+\centering
+\includegraphics[width=0.95\textwidth]{../figures/optimizer_best_so_far_convergence.png}
+\caption{Best-so-far peak force versus evaluation index. These monotone curves make it easier to compare how quickly each method improves within the $\sim 100$-evaluation budget.}
+\label{fig:convergence_best_so_far}
 \end{figure}
 
 \subsection{Algorithm-Specific Observations}
 
-\noindent \textbf{BlackBoxOptim}: Despite being the slowest optimizer, it found the best solution. The adaptive DE strategy appears effective for this permutation problem, though the computational cost is high. \newline
+\noindent \textbf{Optim.jl (simulated annealing)}: Achieves the lowest peak force in this study despite high per-evaluation wall time; the method benefits from the continuous permutation encoding combined with probabilistic uphill moves. \newline
 
-\noindent \textbf{Metaheuristics\_PSO}: Excellent balance between solution quality (second best) and reasonable computation time. The swarm-based approach seems well-suited for this problem. \newline
+\noindent \textbf{Metaheuristics\_PSO}: Delivers the second-best peak force with mid-range runtime. \newline
 
-\noindent \textbf{Metaheuristics\_ECA and DE}: Both found competitive solutions (within 8\% of the best) with moderate computation times. The evolutionary approaches show consistent performance. \newline
+\noindent \textbf{Metaheuristics\_DE, \_ECA, \_GA}: Land on the same best value for this seed; GA is the fastest of the three in wall time. \newline
 
-\noindent \textbf{Metaheuristics\_GA}: Fastest optimizer but found a solution 10\% worse than the best. The genetic operators may need tuning for better exploration. \newline
-
-\noindent \textbf{Optim (Simulated Annealing)}: Performed poorly, finding a solution nearly twice as bad as the best. Simulated annealing may not be well-suited for permutation problems of this size, or the cooling schedule needs adjustment. \newline
+\noindent \textbf{BlackBoxOptim.jl}: Ends slightly worse than the other methods here and is the slowest overall, suggesting that for this problem the chosen adaptive DE settings are not as efficient as the Metaheuristics.jl population methods or Optim.jl's annealing schedule under the same evaluation cap. \newline
 
 \section{Discussion of Results}
 \label{sec:discussion}
@@ -927,7 +904,7 @@ Optim & 2912.76 & 101 & 96 & 22057.1 \\
 
 \noindent \textbf{Wave Reflection:} When waves reach the backplate, they reflect back into the lattice. This reflection creates secondary waves that interact with the primary wave, leading to interference patterns and complex dynamics. The reflection coefficient depends on the impedance mismatch between the lattice material and the backplate constraint. \newline
 
-\noindent \textbf{Material Heterogeneity:} The varying material properties across columns create impedance variations that affect wave propagation. Stiffer materials (lower column indices) have higher impedance, while softer materials (higher column indices) have lower impedance. This heterogeneity causes wave scattering and mode conversion, contributing to the complex dynamics observed. \newline
+\noindent \textbf{Material Heterogeneity:} Each column hosts one catalog material, so impedance varies along the propagation path according to the chosen permutation. Nearest-neighbor vertical springs use the column's $(k,c,\alpha)$, while horizontal springs use the baseline stiffness, producing anisotropic, spatially varying wave speeds. \newline
 
 \noindent \textbf{Energy Distribution:} Wave propagation distributes energy throughout the lattice. Initially, energy is concentrated near the impact site, but waves carry energy across the system. The backplate reflection causes energy to accumulate near the right edge, leading to higher forces and displacements in that region. \newline
 
@@ -953,7 +930,7 @@ Optim & 2912.76 & 101 & 96 & 22057.1 \\
 
 \noindent \textbf{Force Decay:} After the peak, the force gradually decays as energy dissipates through damping. The decay rate depends on the damping coefficient and system dynamics. Eventually, the system approaches equilibrium with minimal backplate force. \newline
 
-\noindent \textbf{Material Ordering Effects:} Different material orderings produce different force profiles. Optimal orderings minimize the peak force by managing wave propagation, energy distribution, and force transmission. The optimization results show that strategic material placement can reduce peak force by 14-48\% compared to simple heuristics. \newline
+\noindent \textbf{Material Ordering Effects:} Different column assignments produce different force histories. In the present study, the best permutations lower the peak force by only a few percent relative to the stiffest-to-softest baseline, but the ranking of algorithms and the qualitative ordering patterns still carry design insight. \newline
 
 \subsection{Optimization Problem Characteristics}
 
@@ -962,7 +939,7 @@ Optim & 2912.76 & 101 & 96 & 22057.1 \\
 \begin{itemize}
     \item \textbf{Large Search Space}: With $11! = 39.9$ million permutations, exhaustive search is infeasible.
     
-    \item \textbf{Expensive Evaluations}: Each function evaluation requires a full 8-second simulation of a 242-DOF system, taking approximately 2-7 minutes depending on the optimizer's internal overhead.
+    \item \textbf{Expensive evaluations}: Each call integrates the 242-DOF system through $8$~s of model time; measured wall times per call vary from $\sim 14$~s to $\sim 88$~s depending on the optimizer wrapper.
     
     \item \textbf{Noisy Objective}: Small changes in material ordering can lead to significantly different peak forces due to complex wave propagation and material interaction effects.
     
@@ -971,38 +948,24 @@ Optim & 2912.76 & 101 & 96 & 22057.1 \\
 
 \subsection{Algorithm Selection Recommendations}
 
-\noindent Based on the results, we recommend:
+\noindent For the reported settings and seed:
 
 \begin{enumerate}
-    \item \textbf{For Best Solution Quality}: Use BlackBoxOptim if computational time is not a constraint. The adaptive strategy and thorough exploration justify the longer runtime.
-    
-    \item \textbf{For Balanced Performance}: Use Metaheuristics\_PSO for a good trade-off between solution quality and computation time. It found the second-best solution in reasonable time.
-    
-    \item \textbf{For Fast Exploration}: Use Metaheuristics\_GA for rapid screening of the search space, though it may not find the absolute best solution.
-    
-    \item \textbf{Avoid}: Optim's Simulated Annealing implementation appears poorly suited for this problem and should not be used without significant parameter tuning.
+    \item \textbf{Best peak force}: Optim.jl simulated annealing delivered the lowest value; expect longer wall times per evaluation than the Metaheuristics\_GA run.
+    \item \textbf{Balanced metaheuristic}: Metaheuristics\_PSO offers nearly the same objective as DE/ECA/GA with competitive runtime.
+    \item \textbf{Fastest wall time}: Metaheuristics\_GA finished first while still matching the DE/ECA best objective to the printed precision.
+    \item \textbf{BlackBoxOptim.jl}: Underperformed slightly on both objective and wall time in this comparison; revisiting strategy parameters or budgets may be warranted before discarding it outright.
 \end{enumerate}
 
 \subsection{Physical Insights and Validation}
 
-\noindent The optimal material orderings reveal interesting physical insights that can be validated against engineering principles:
+\noindent The numerical optima illustrate how column-wise assignments interact with wave travel time, impedance contrast, and damping:
 
 \begin{itemize}
-    \item \textbf{Material 1 Placement}: All top performers place material 1 (highest stiffness, $k_{coupling} = 100$ N) in column 1, suggesting that stiffer materials near the impact side help reduce peak force. This is physically reasonable as stiffer materials can better resist initial impact and distribute forces more effectively.
-    
-    \item \textbf{Soft Materials}: Softer materials (higher indices, lower stiffness) tend to be placed in middle and later columns, potentially acting as energy absorbers. For example, material 11 (softest, $k_{coupling} = 1.73$ N) appears in later columns in optimal solutions, which aligns with the concept of progressive energy absorption in protective systems.
-    
-    \item \textbf{Ordering Patterns}: The optimal orderings are not simply sorted by stiffness, indicating that material interactions and wave propagation effects create complex dependencies. For instance, BlackBoxOptim's optimal ordering $[1, 7, 5, 9, 3, 6, 11, 8, 2, 4, 10]$ shows material 7 (relatively soft) placed early, followed by material 5, suggesting that the specific sequence matters for wave propagation and force transmission.
-    
-    \item \textbf{Physical Validation}: The optimized solutions are physically reasonable:
-    \begin{itemize}
-        \item Stiff materials (1-3) are consistently placed in early columns, providing initial impact resistance
-        \item Intermediate materials (4-7) are distributed throughout, likely to manage wave propagation
-        \item Soft materials (8-11) appear in later columns, serving as energy absorbers near the backplate
-        \item The non-monotonic ordering suggests that wave interference and material coupling effects are important, which is consistent with wave propagation theory in heterogeneous media
-    \end{itemize}
-    
-    \item \textbf{Comparison with Intuition}: A simple heuristic of sorting by stiffness (stiffest to softest) would yield $[1, 2, 3, \ldots, 11]$, but the optimized orderings differ significantly, confirming that optimization is necessary rather than relying on simple rules. The fact that all top optimizers converge to similar patterns (material 1 first, soft materials later) provides confidence that these solutions capture real physical phenomena rather than algorithm artifacts.
+    \item \textbf{Best-found pattern}: The lowest peak force occurred for $[11, 10, 9, 8, 7, 6, 4, 3, 2, 1, 5]$, i.e., the softest catalog material sits in column~1 with a non-monotone progression across the slab. This contradicts a rigid ``stiffest-at-impact'' rule, highlighting interference and multiple reflection paths in the 2-D lattice.
+    \item \textbf{Metaheuristic cluster}: DE/ECA/GA agree on $[9, 8, 11, 6, 5, 4, 7, 10, 3, 2, 1]$---material~9 at the loaded edge---showing that different search trajectories can land on distinct but nearly degenerate force values.
+    \item \textbf{Baseline relevance}: Sequential stiff-to-soft ordering remains a strong heuristic (only $\sim 2$\% worse than the best optimizer here) but is not optimal for peak-force minimization in this model.
+    \item \textbf{Validation stance}: Because objectives differ by only a few newtons, engineering conclusions should emphasize robust families of orderings rather than a single ``magic'' permutation without repeated runs or uncertainty quantification.
 \end{itemize}
 
 \section{Limitations}
@@ -1034,7 +997,7 @@ Optim & 2912.76 & 101 & 96 & 22057.1 \\
 
 \noindent \textbf{System Size:} The 11×11 lattice (242 DOF) is computationally manageable but represents a compromise between detail and computational cost. Larger systems would provide more spatial resolution but require significantly more computation time. \newline
 
-\noindent \textbf{Optimization Budget:} With only 100-102 function evaluations per optimizer, the search space ($11! = 39.9$ million permutations) is only partially explored. More evaluations could potentially find better solutions but would require longer computation time. \newline
+\noindent \textbf{Optimization budget:} With only $\sim 100$ function evaluations per optimizer (plus occasional extra bookkeeping calls), the search space ($11! \approx 3.99 \times 10^{7}$ permutations) is sparsely sampled. Larger budgets might lower the peak force further but at increased wall time. \newline
 
 \noindent \textbf{Single Run Statistics:} Results are based on single optimization runs for each algorithm. Multiple independent runs would provide statistical confidence intervals and allow significance testing, but would multiply the computational cost. \newline
 
@@ -1084,32 +1047,13 @@ Optim & 2912.76 & 101 & 96 & 22057.1 \\
 
 \subsection{System Specifications}
 
-\noindent The optimization runs were conducted on a system with the following characteristics:
-\begin{itemize}
-    \item \textbf{Processor}: Apple M1 chip
-    \item \textbf{Parallel execution}: All optimizers ran in parallel using Julia's task-based parallelism
-    \item \textbf{Total wall-clock time}: Approximately 7.4 hours (determined by the slowest optimizer: BlackBoxOptim)
-    \item \textbf{Total function evaluations}: 603 evaluations across all optimizers
-\end{itemize}
+\noindent The optimization runs were conducted on a workstation with an Apple M1 chip, Julia~1.11.6, and eight threads. All six optimizers executed concurrently; the wall-clock duration of the full study matches the slowest optimizer (BlackBoxOptim.jl, $\sim 9050$~s, i.e.\ roughly $2.5$~h). Summing objective evaluations across optimizers gives $604$ calls ($100{+}103{+}100{+}100{+}100{+}101$). \newline
 
 \subsection{Time Breakdown}
 
-\noindent The total computation time can be decomposed into simulation time and optimizer overhead:
-\begin{itemize}
-    \item \textbf{Simulation time per evaluation}: Approximately 2-4 minutes per evaluation, depending on the specific material ordering and resulting dynamics. Each simulation solves a 242-DOF system for 8 seconds with adaptive time-stepping.
-    \item \textbf{Optimizer overhead}: Varies significantly by algorithm:
-    \begin{itemize}
-        \item Metaheuristics\_GA: Minimal overhead ($\sim$0.5 minutes per evaluation), fastest overall
-        \item Metaheuristics\_ECA: Low overhead ($\sim$1.4 minutes per evaluation)
-        \item Metaheuristics\_DE: Moderate overhead ($\sim$2.6 minutes per evaluation)
-        \item Metaheuristics\_PSO: Moderate overhead ($\sim$2.8 minutes per evaluation)
-        \item Optim: High overhead ($\sim$3.6 minutes per evaluation)
-        \item BlackBoxOptim: Highest overhead ($\sim$4.3 minutes per evaluation), likely due to adaptive parameter adjustment computations
-    \end{itemize}
-    \item \textbf{Average total time per evaluation}: Approximately 2-7 minutes depending on the optimizer, with simulation time being the dominant component for most algorithms
-\end{itemize}
+\noindent A single baseline simulation (sequential ordering) required $\sim 17$~s of wall time on the same machine. The much larger per-evaluation times in Table~\ref{tab:optimizer_comparison} ($\sim 14$--$88$~s when averaged as time/evaluations) therefore reflect optimizer bookkeeping, population maintenance, and Julia compilation or scheduling effects in addition to repeated ODE solves. BlackBoxOptim.jl averages the slowest per evaluation ($\sim 88$~s), while Metaheuristics\_GA averages the fastest ($\sim 14$~s). \newline
 
-\noindent The parallel execution provided significant time savings compared to sequential execution, which would have taken approximately 35-40 hours. The time variation between optimizers is primarily due to different internal overheads rather than simulation time differences, as all optimizers evaluate the same objective function. \newline
+\noindent Had the six studies been run strictly back-to-back on one core, the CPU time would approach the sum of the per-optimizer totals ($\sim 29{,}100$~s); task parallelism reduced the user-visible wait to the longest single stream. \newline
 
 \section{Conclusions}
 \label{sec:conclusions}
@@ -1127,7 +1071,7 @@ Optim & 2912.76 & 101 & 96 & 22057.1 \\
     
     \item \textbf{Boundary Effects}: The immovable backplate creates wave reflections that significantly affect system dynamics. Energy accumulation near the backplate leads to higher forces and displacements in that region.
     
-    \item \textbf{Material Interactions}: The optimal material orderings demonstrate that material interactions and wave propagation effects create complex dependencies. Simple heuristics (e.g., sorting by stiffness) are insufficient; optimization is necessary to find effective configurations.
+    \item \textbf{Material Interactions}: Orderings that are nearly optimal can differ noticeably in assignment (e.g.\ soft versus intermediate materials at the loaded edge), indicating multi-path wave phenomena even when peak forces change by only a few percent.
 \end{enumerate}
 
 \subsection{Numerical Validation}
@@ -1151,11 +1095,11 @@ Optim & 2912.76 & 101 & 96 & 22057.1 \\
     
     \item \textbf{Algorithm Comparison}: Conducted comprehensive comparison of six optimization algorithms from three Julia packages, identifying strengths and weaknesses of each approach.
     
-    \item \textbf{Performance Improvement}: Achieved significant improvements over baseline heuristics, with the best solution (BlackBoxOptim: 1497.89 N) representing a 14.3\% reduction compared to sequential ordering and a 48.6\% reduction compared to the worst optimizer.
+    \item \textbf{Performance improvement}: All six algorithms beat the stiff-to-soft baseline ($1030.99$~N) by $\sim 1.3$--$1.7$\%; the spread between the best and worst optimizer outcomes is only $\sim 0.4$\%.
     
-    \item \textbf{Algorithm Selection}: Identified BlackBoxOptim for best solution quality and Metaheuristics\_PSO for balanced performance, providing practical guidance for algorithm selection.
+    \item \textbf{Algorithm selection}: Optim.jl delivered the lowest peak force; Metaheuristics\_PSO and the DE/ECA/GA trio form a tight cluster; BlackBoxOptim.jl trailed slightly on both objective and wall time for this configuration.
     
-    \item \textbf{Physical Insights}: Revealed that optimal orderings consistently place stiff materials near the impact side, with softer materials distributed in later columns, providing physical validation of the optimization results.
+    \item \textbf{Physical insights}: Best-found permutations need not monotonically follow stiffness ranking; multiple column layouts achieve nearly identical peak loads, underscoring the value of repeated runs or robustness metrics.
 \end{enumerate}
 
 \subsection{Broader Implications}
@@ -1163,7 +1107,7 @@ Optim & 2912.76 & 101 & 96 & 22057.1 \\
 \noindent This research contributes to several areas:
 
 \begin{enumerate}
-    \item \textbf{Protective System Design}: Demonstrates that strategic material ordering can significantly reduce peak force transfer, with direct applications to armor systems, impact protection, and safety equipment.
+    \item \textbf{Protective system design}: Shows that column-wise reordering can trim peak backplate loads, even when gains are modest under a fixed material catalog, with applications to layered impact protection concepts.
     
     \item \textbf{Wave Propagation Understanding}: Provides insights into wave propagation in heterogeneous media, relevant to seismic analysis, acoustic materials, and composite structures.
     

@@ -1,0 +1,8 @@
+timestamp: 2026-04-01 22:32:05
+git_commit: 7b676bda164d832e936870eabf663d263c061be2
+julia_version: 1.11.6
+max_evaluations: 100
+threads: 8
+repo_root: /Users/danielmiles/Documents/School/Senior/Research/Material-Simulations-Research/
+OPT_COMPARISON_OUTPUT_DIR: /Users/danielmiles/Documents/School/Senior/Research/Material-Simulations-Research/papers/final-report/runs/my_overnight_run
+SKIP_COMPARISON_ANIMATION: true

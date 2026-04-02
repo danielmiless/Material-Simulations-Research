@@ -1,0 +1,39 @@
+# Optimizer Comparison Results
+# Date: 2026-04-02T01:02:48.043
+
+## Metaheuristics_DE
+Success: Yes
+Best Peak Force: 1014.6126055706509
+Best Permutation: [9, 8, 11, 6, 5, 4, 7, 10, 3, 2, 1]
+Evaluations: 100
+
+## BlackBoxOptim
+Success: Yes
+Best Peak Force: 1017.1580129658863
+Best Permutation: [10, 8, 11, 2, 7, 4, 9, 6, 3, 1, 5]
+Evaluations: 103
+
+## Metaheuristics_ECA
+Success: Yes
+Best Peak Force: 1014.6126055706509
+Best Permutation: [9, 8, 11, 6, 5, 4, 7, 10, 3, 2, 1]
+Evaluations: 100
+
+## Metaheuristics_GA
+Success: Yes
+Best Peak Force: 1014.6126055706509
+Best Permutation: [9, 8, 11, 6, 5, 4, 7, 10, 3, 2, 1]
+Evaluations: 100
+
+## Metaheuristics_PSO
+Success: Yes
+Best Peak Force: 1014.4118366372749
+Best Permutation: [9, 11, 8, 5, 4, 6, 7, 10, 3, 2, 1]
+Evaluations: 100
+
+## Optim
+Success: Yes
+Best Peak Force: 1012.985682447747
+Best Permutation: [11, 10, 9, 8, 7, 6, 4, 3, 2, 1, 5]
+Evaluations: 101
+

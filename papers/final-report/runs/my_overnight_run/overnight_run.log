@@ -1,0 +1,254 @@
+============================================================
+Overnight Optimizer Comparison Run
+============================================================
+Start Time: Wed Apr  1 22:31:47 EDT 2026
+Max Evaluations: 100
+Output Directory: /Users/danielmiles/Documents/School/Senior/Research/Material-Simulations-Research/papers/final-report/runs/my_overnight_run
+
+[22:31:47] Starting: Full Optimizer Comparison
+Command: julia --project=. -e 'MAX_EVALUATIONS=100; include("/Users/danielmiles/Documents/School/Senior/Research/Material-Simulations-Research/scripts/optimization/compare_optimizers.jl")'
+
+WARNING: redefinition of constant Main.DEFAULT_MATERIALS. This may fail, cause incorrect answers, or produce other errors.
+WARNING: using Optim.OptimizationState in module Main conflicts with an existing identifier.
+WARNING: redefinition of constant Main.DEFAULT_MATERIALS. This may fail, cause incorrect answers, or produce other errors.
+WARNING: redefinition of constant Main.DEFAULT_MATERIALS. This may fail, cause incorrect answers, or produce other errors.
+Wrote run manifest: /Users/danielmiles/Documents/School/Senior/Research/Material-Simulations-Research/papers/final-report/runs/my_overnight_run/run_manifest.txt
+Using max_evaluations = 100
+(Override with: julia compare_optimizers.jl <number> or set MAX_EVALUATIONS env var)
+
+================================================================================
+Optimizer Comparison: Material Ordering Optimization
+================================================================================
+Max Evaluations: 100
+Materials: 11 distinct materials
+
+CMA_ES (ES) is not available in this Metaheuristics.jl version - skipping
+Running all optimizers in parallel for faster execution...
+  All optimizers will run concurrently
+  Total time ≈ longest optimizer (not sum of all)
+
+Launching all optimizers in parallel...
+
+
+Waiting for all optimizers to complete...
+[22:32:07] Progress: 0/6 (0.0%) | BlackBoxOptim: Starting... | Running: BlackBoxOptim
+================================================================================
+BlackBoxOptim.jl Material Ordering Optimization
+================================================================================
+Max Evaluations: 100
+Materials: 11 distinct materials
+
+[22:32:08] Progress: 0/6 (0.0%) | Optim.jl: Starting... | Running: BlackBoxOptim, Optim.jl
+Starting optimization...
+
+================================================================================
+Optim.jl Material Ordering Optimization
+================================================================================
+Max Iterations: 100
+Materials: 11 distinct materials
+
+[22:32:09] Progress: 0/6 (0.0%) | Metaheuristics_PSO: Starting... | Running: BlackBoxOptim, Metaheuristics_PSO, Optim.jl
+
+================================================================================
+Optimization Summary: BlackBoxOptim
+================================================================================
+Best Peak Force: 1017.1580129658863
+Best Permutation: [10, 8, 11, 2, 7, 4, 9, 6, 3, 1, 5]
+Total Evaluations: 103
+Elapsed Time: 2450.22 seconds
+================================================================================
+Best Continuous Encoding: [0.6869179176614211, 0.1812756702730955, 0.5265530628190029, 0.22120279947440386, 0.8698320295220069, 0.3480603673136794, 0.19728766108650309, 0.03487274419132723, 0.22700167546588618, 0.006868339287463712, 0.06810957446891794]
+Optimization Time: 2449.57 seconds
+Starting optimization with SimulatedAnnealing...
+
+================================================================================
+Metaheuristics.jl Material Ordering Optimization
+================================================================================
+Algorithm: PSO
+Max Evaluations: 100
+Materials: 11 distinct materials
+
+[23:12:58] Progress: 0/6 (0.0%) | Metaheuristics_DE: Starting... | Running: BlackBoxOptim, Metaheuristics_DE, Metaheuristics_PSO, Optim.jl
+
+================================================================================
+Optimization Summary: Optim.jl
+================================================================================
+Best Peak Force: 1012.985682447747
+Best Permutation: [11, 10, 9, 8, 7, 6, 4, 3, 2, 1, 5]
+Total Evaluations: 101
+Elapsed Time: 1281.52 seconds
+================================================================================
+Optimization Time: 1281.35 seconds
+Starting optimization with PSO...
+
+================================================================================
+Metaheuristics.jl Material Ordering Optimization
+================================================================================
+Algorithm: DE
+Max Evaluations: 100
+Materials: 11 distinct materials
+
+[23:34:20] Progress: 0/6 (0.0%) | Metaheuristics_ECA: Starting... | Running: BlackBoxOptim, Metaheuristics_DE, Metaheuristics_ECA, Metaheuristics_PSO, Optim.jl
+
+================================================================================
+Optimization Summary: Metaheuristics.jl (PSO)
+================================================================================
+Best Peak Force: 1014.4118366372749
+Best Permutation: [9, 11, 8, 5, 4, 6, 7, 10, 3, 2, 1]
+Total Evaluations: 100
+Elapsed Time: 1263.94 seconds
+================================================================================
+Optimization Time: 1263.92 seconds
+Starting optimization with DE...
+
+================================================================================
+Metaheuristics.jl Material Ordering Optimization
+================================================================================
+Algorithm: ECA
+Max Evaluations: 100
+Materials: 11 distinct materials
+
+[23:55:24] Progress: 0/6 (0.0%) | Metaheuristics_GA: Starting... | Running: BlackBoxOptim, Metaheuristics_DE, Metaheuristics_ECA, Metaheuristics_GA, Metaheuristics_PSO, Optim.jl
+
+================================================================================
+Optimization Summary: Metaheuristics.jl (DE)
+================================================================================
+Best Peak Force: 1014.6126055706509
+Best Permutation: [9, 8, 11, 6, 5, 4, 7, 10, 3, 2, 1]
+Total Evaluations: 100
+Elapsed Time: 1319.49 seconds
+================================================================================
+Optimization Time: 1319.48 seconds
+Starting optimization with ECA...
+
+================================================================================
+Metaheuristics.jl Material Ordering Optimization
+================================================================================
+Algorithm: GA
+Max Evaluations: 100
+Materials: 11 distinct materials
+
+[00:17:23] Progress: 1/6 (16.7%) | BlackBoxOptim: ✓ Completed (Time: 2451.1s) | Running: Metaheuristics_DE, Metaheuristics_ECA, Metaheuristics_GA, Metaheuristics_PSO, Optim.jl
+
+================================================================================
+Optimization Summary: Metaheuristics.jl (ECA)
+================================================================================
+Best Peak Force: 1014.6126055706509
+Best Permutation: [9, 8, 11, 6, 5, 4, 7, 10, 3, 2, 1]
+Total Evaluations: 100
+Elapsed Time: 1356.58 seconds
+================================================================================
+Optimization Time: 1356.53 seconds
+Starting optimization with GA...
+
+[00:40:00] Progress: 2/6 (33.3%) | Optim.jl: ✓ Completed (Time: 3732.2s) | Running: Metaheuristics_DE, Metaheuristics_ECA, Metaheuristics_GA, Metaheuristics_PSO
+  ✓ BlackBoxOptim completed
+  ✓ Optim completed
+
+================================================================================
+Optimization Summary: Metaheuristics.jl (GA)
+================================================================================
+Best Peak Force: 1014.6126055706509
+Best Permutation: [9, 8, 11, 6, 5, 4, 7, 10, 3, 2, 1]
+Total Evaluations: 100
+Elapsed Time: 1366.9 seconds
+================================================================================
+Optimization Time: 1366.84 seconds
+[01:02:46] Progress: 3/6 (50.0%) | Metaheuristics_PSO: ✓ Completed (Time: 4995.7s) | Running: Metaheuristics_DE, Metaheuristics_ECA, Metaheuristics_GA
+[01:02:46] Progress: 4/6 (66.7%) | Metaheuristics_DE: ✓ Completed (Time: 6315.2s) | Running: Metaheuristics_ECA, Metaheuristics_GA
+  ✓ Metaheuristics_PSO completed
+  ✓ Metaheuristics_DE completed
+[01:02:47] Progress: 5/6 (83.3%) | Metaheuristics_ECA: ✓ Completed (Time: 7671.7s) | Running: Metaheuristics_GA
+[01:02:47] Progress: 6/6 (100.0%) | Metaheuristics_GA: ✓ Completed (Time: 9038.6s)
+  ✓ Metaheuristics_ECA completed
+  ✓ Metaheuristics_GA completed
+
+================================================================================
+All optimizers completed!
+Total time: 9041.1 seconds (150.7 minutes)
+================================================================================
+
+================================================================================
+COMPARISON SUMMARY
+================================================================================
+
+Optimizer                    | Peak Force    | Evaluations | Success
+--------------------------------------------------------------------------------
+Metaheuristics_DE            |   1014.612606 |         100 | ✓
+BlackBoxOptim                |   1017.158013 |         103 | ✓
+Metaheuristics_ECA           |   1014.612606 |         100 | ✓
+Metaheuristics_GA            |   1014.612606 |         100 | ✓
+Metaheuristics_PSO           |   1014.411837 |         100 | ✓
+Optim                        |   1012.985682 |         101 | ✓
+
+Best Overall: Optim with peak force = 1012.985682447747
+Best Permutation: [11, 10, 9, 8, 7, 6, 4, 3, 2, 1, 5]
+
+================================================================================
+SUMMARY STATISTICS
+================================================================================
+Successful Optimizations: 6
+
+Peak Force Statistics:
+  Best: 1012.985682447747 N
+  Worst: 1017.1580129658863 N
+  Mean: 1014.73222479381 N
+  Std Dev: 1.3476225932264765 N
+
+Evaluation Statistics:
+  Min: 100
+  Max: 103
+  Mean: 100.66666666666667
+
+Time Statistics:
+  Min: 1367.8 s
+  Max: 9039.4 s
+  Mean: 4845.4 s
+
+Best Overall: Optim
+  Peak Force: 1012.985682447747 N
+  Permutation: [11, 10, 9, 8, 7, 6, 4, 3, 2, 1, 5]
+  Evaluations: 101
+  Time: 6589.4 s
+Comparison results saved to /Users/danielmiles/Documents/School/Senior/Research/Material-Simulations-Research/papers/final-report/runs/my_overnight_run/comparison_results.txt
+
+Generating convergence plot...
+Convergence plot saved to /Users/danielmiles/Documents/School/Senior/Research/Material-Simulations-Research/papers/final-report/runs/my_overnight_run/optimizer_convergence_comparison.png
+
+Generating best-so-far convergence plot...
+Best-so-far convergence plot saved to /Users/danielmiles/Documents/School/Senior/Research/Material-Simulations-Research/papers/final-report/runs/my_overnight_run/optimizer_best_so_far_convergence.png
+
+Generating LaTeX table...
+LaTeX table saved to /Users/danielmiles/Documents/School/Senior/Research/Material-Simulations-Research/papers/final-report/runs/my_overnight_run/optimizer_comparison_table.tex
+
+Exporting CSV data...
+Summary CSV saved to /Users/danielmiles/Documents/School/Senior/Research/Material-Simulations-Research/papers/final-report/runs/my_overnight_run/optimizer_summary.csv
+Convergence history CSVs saved to /Users/danielmiles/Documents/School/Senior/Research/Material-Simulations-Research/papers/final-report/runs/my_overnight_run
+
+================================================================================
+Skipping best-configuration animation (SKIP_COMPARISON_ANIMATION is set).
+================================================================================
+Best configuration (no video):
+  Optimizer: Optim
+  Peak Force: 1012.985682447747 N
+  Material Ordering: [11, 10, 9, 8, 7, 6, 4, 3, 2, 1, 5]
+
+================================================================================
+Comparison complete!
+================================================================================
+All outputs saved to: /Users/danielmiles/Documents/School/Senior/Research/Material-Simulations-Research/papers/final-report/runs/my_overnight_run
+  - Text summary: comparison_results.txt
+  - Convergence plot (raw values): optimizer_convergence_comparison.png
+  - Best-so-far convergence plot: optimizer_best_so_far_convergence.png
+  - LaTeX table: optimizer_comparison_table.tex
+  - CSV data: optimizer_summary.csv + convergence_*.csv
+
+[01:02:59] Completed: Full Optimizer Comparison
+
+
+============================================================
+Overnight Run Complete
+============================================================
+End Time: Thu Apr  2 01:02:59 EDT 2026
+Results saved in: /Users/danielmiles/Documents/School/Senior/Research/Material-Simulations-Research/papers/final-report/runs/my_overnight_run
+
